@@ -1,0 +1,252 @@
+#include "stdlib.h"
+#include "math.h"
+#include "raylib.h"
+#include "main.h"
+#include "tex_atlas.c"
+#include "scroll_env.c"
+#include "player.c"
+#include "bird.c"
+#include "bird_computer.c"
+
+float randf(float min, float max) {
+    float resolution = 999999.999f;
+    min *= resolution;
+    max *= resolution;
+    float result = GetRandomValue(min, max) / resolution;
+    return result;
+}
+
+Vector2 vec2_normalized(float x, float y) {
+    float w = sqrt((x * x) + (y * y));
+    x /= w;
+    y /= w;
+    Vector2 result = { x, y };
+    return result;
+}
+
+void update_state_dimensions(State *state, int w, int h) {
+    state->screen_width = w;
+    state->screen_height = h;
+    float padding_w;
+    float padding_h;
+    float ratio_unit;
+    if ((w / GAME_WIDTH_RATIO) < (h / GAME_HEIGHT_RATIO)) {
+        ratio_unit = lroundf(w / GAME_WIDTH_RATIO);
+        padding_w = 0;
+        padding_h = h - (ratio_unit * GAME_HEIGHT_RATIO);
+    } else {
+        ratio_unit = lroundf(h / GAME_HEIGHT_RATIO);
+        padding_w = w - (ratio_unit * GAME_WIDTH_RATIO);
+        padding_h = 0;
+    }
+    float half_padding_w = padding_w / 2;
+    float half_padding_h = padding_h / 2;
+    state->game_width = lroundf(w - padding_w);
+    state->game_height = lroundf(h - padding_h);
+    state->scale_multiplier = ratio_unit / ENV_TEX_SIZE;
+    state->game_left = lroundf(half_padding_w);
+    state->game_right = lroundf(half_padding_w + state->game_width);
+    state->game_top = lroundf(half_padding_h);
+    state->game_bottom = lroundf(half_padding_h + state->game_height);
+    state->game_center_x = lroundf(half_padding_w + (state->game_width / 2));
+    state->game_center_y = lroundf(half_padding_h + (state->game_height / 2));
+}
+
+int catch_window_resize(State *state) {
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
+    if (state->screen_width != w || state->screen_height != h) {
+        update_state_dimensions(state, w, h);
+        return 1;
+    }
+    return 0;
+}
+
+int main(void) {
+    State *state = (State *)calloc(1, sizeof(State));
+    {
+        int window_min_width = ENV_TEX_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
+        int window_min_height = ENV_TEX_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
+        update_state_dimensions(state, window_min_width, window_min_height);
+
+        SetTraceLogLevel(
+            #ifdef VERBOSE
+            LOG_ALL
+            #else
+            LOG_WARNING
+            #endif
+        );
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+        InitWindow(state->screen_width, state->screen_height, "Deathbird");
+        SetWindowMinSize(window_min_width, window_min_height);
+#ifdef FULLSCREEN
+        int display = GetCurrentMonitor();
+        SetWindowSize(GetMonitorWidth(display), GetMonitorHeight(display));
+        ToggleFullscreen();
+        catch_window_resize(state);
+#endif
+        SetTargetFPS(60);
+
+        InitAudioDevice();
+
+        tex_atlas_setup(state);
+
+        state->sounds_death_splats[0] = LoadSound("./sounds/splat1.wav");
+        state->sounds_death_splats[1] = LoadSound("./sounds/splat2.wav");
+        state->sounds_death_splats[2] = LoadSound("./sounds/splat3.wav");
+        state->sounds_death_splats[3] = LoadSound("./sounds/splat4.wav");
+        state->sounds_death_splats[4] = LoadSound("./sounds/splat5.wav");
+        state->sounds_death_splats[5] = LoadSound("./sounds/splat6.wav");
+        state->sounds_death_splats[6] = LoadSound("./sounds/splat7.wav");
+        state->sounds_death_splats[7] = LoadSound("./sounds/splat8.wav");
+    }
+
+    Bird_Computer *bird_computer = (Bird_Computer *)malloc(sizeof(Bird_Computer));
+    bird_computer_init(bird_computer);
+
+    Scroll_Env *scroll_envs = (Scroll_Env *)malloc(sizeof(Scroll_Env) * SCROLL_ENV_AMOUNT);
+    scroll_env_current_state_setup(state, scroll_envs);
+
+    Player *player = (Player *)calloc(1, sizeof(Player));
+    player->damage = 10;
+
+    Bird *birds = (Bird *)calloc(BIRD_AMOUNT, sizeof(Bird));
+    for (int i = 0; i < BIRD_AMOUNT; i++) {
+        birds[i].move_speed = BIRD_MAX_MOVE_SPEED;
+        birds[i].position.x = BIRD_RESET_LEFT;
+        if (i == 0) {
+            birds[i].type = BIRD_TYPE_GIANT;
+            birds[i].health = 30;
+            birds[i].collision_radius = 0.2f;
+        } else {
+            birds[i].type = BIRD_TYPE_WHITE;
+            birds[i].health = 10;
+            birds[i].collision_radius = 0.1f;
+        }
+    }
+
+    int skip_frame = 0;
+    while (!WindowShouldClose()) {
+        if (skip_frame) {
+            skip_frame = 0;
+            continue;
+        }
+        const float delta_time = GetFrameTime();
+        if (IsWindowResized()) {
+            update_state_dimensions(state, GetScreenWidth(), GetScreenHeight());
+            skip_frame = 1;
+            BeginDrawing();
+            DrawRectangle(0, 0, state->screen_width, state->screen_height, BLACK);
+            EndDrawing();
+        }
+
+        if (IsKeyPressed(KEY_C)) {
+            if (state->game_state == GAME_STATE_DEATHBIRD) {
+                state->game_state = GAME_STATE_BIRD_COMPUTER;
+            } else {
+                state->game_state = GAME_STATE_DEATHBIRD;
+            }
+        }
+
+        switch (state->game_state) {
+        case GAME_STATE_NEXT_LEVEL: {
+            player->position.x = 0.0f;
+            player->position.y = 1.0f;
+            state->bird_amount = randf(10, BIRD_AMOUNT - 1);
+            state->bird_counter = 0;
+            state->birds_passed = 0;
+            state->bird_rate = 1.0f;
+            state->bird_timer = 0.0f;
+            switch (state->game_level) {
+            case GAME_LEVEL_FOREST: state->game_level = GAME_LEVEL_FIELD; break;
+            case GAME_LEVEL_FIELD: state->game_level = GAME_LEVEL_FOREST; break;
+            }
+            scroll_env_current_state_setup(state, scroll_envs);
+            switch (state->game_level) {
+            case GAME_LEVEL_FOREST: {
+                int giant_bird = GetRandomValue(0, state->bird_amount);
+                for (int i = 0; i < state->bird_amount; i++) {
+                    birds[i].state = BIRD_STATE_RESET;
+                    if (i == giant_bird) {
+                        birds[i].type = BIRD_TYPE_GIANT;
+                        birds[i].health = 30;
+                        birds[i].collision_radius = 0.2f;
+                    } else {
+                        birds[i].type = BIRD_TYPE_WHITE;
+                        birds[i].health = 10;
+                        birds[i].collision_radius = 0.1f;
+                    }
+                }
+            } break;
+            case GAME_LEVEL_FIELD: {
+                for (int i = 0; i < state->bird_amount; i++) {
+                    birds[i].state = BIRD_STATE_RESET;
+                    birds[i].type = BIRD_TYPE_YELLOW;
+                    birds[i].health = 10;
+                    birds[i].collision_radius = 0.1f;
+                }
+            } break;
+            }
+            state->game_state = GAME_STATE_DEATHBIRD;
+        } break;
+        case GAME_STATE_DEATHBIRD: {
+            scroll_env_update(state, scroll_envs, delta_time);
+            // player must be updated before birds because it can change the
+            // state of the birds which should be handled the same frame
+            player_update(state, player, birds, delta_time);
+            birds_update(state, birds, delta_time);
+            if (state->birds_passed == state->bird_amount) {
+                state->game_state = GAME_STATE_BIRD_COMPUTER;
+            }
+        } break;
+        case GAME_STATE_BIRD_COMPUTER: {
+            bird_computer_update(state, bird_computer);
+        } break;
+        }
+
+        BeginDrawing();
+
+        ClearBackground(OUT_OF_BOUNDS_COLOR);
+
+        switch (state->game_state) {
+        case GAME_STATE_DEATHBIRD: {
+            scroll_env_render(state, scroll_envs);
+            birds_render(state, birds);
+            player_render(state, player);
+        } break;
+        case GAME_STATE_BIRD_COMPUTER: {
+            bird_computer_render(state, bird_computer);
+        } break;
+        }
+
+        // render out of bounds padding bars
+        if (state->game_left > 0) {
+            DrawRectangle(0, 0, state->game_left, state->game_height, OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(state->game_right, 0, state->game_left, state->game_height, OUT_OF_BOUNDS_COLOR);
+        } else if (state->game_top > 0) {
+            DrawRectangle(0, 0, state->game_width, state->game_top, OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(0, state->game_bottom, state->game_width, state->game_top, OUT_OF_BOUNDS_COLOR);
+        }
+
+        EndDrawing();
+    }
+
+    UnloadTexture(state->tex_atlas);
+    UnloadFont(bird_computer->font);
+
+    for (int i = 0; i < DEATH_SOUND_AMOUNT; i++) {
+        UnloadSound(state->sounds_death_splats[i]);
+    }
+
+    free(birds);
+    free(player);
+    free(scroll_envs);
+    free(bird_computer);
+    free(state);
+
+    CloseAudioDevice();
+
+    CloseWindow();
+
+    return 0;
+}
