@@ -23,6 +23,7 @@
 #define dbgs(s)
 #endif
 
+#define OPAQUE 255
 #define OUT_OF_BOUNDS_COLOR BLACK
 #define GROUND_Y -0.97f
 #define CEILING_Y 0.97f
@@ -33,18 +34,18 @@
 #define ATLAS_PADDING 1
 
 // def scroll env
-#define SCROLL_ENV_AMOUNT 4
+#define SCROLL_ENV_CAPACITY 8
 
 // def player
 #define PLAYER_GRAVITY 3.0f
 #define PLAYER_GROUND_LOSS 0.8f
 #define PLAYER_BIRD_BOUNCE 3.0f
 #define PLAYER_HORIZONTAL_SPEED 2.0f
-#define PLAYER_ROTATION_SPEED 5.0f
+#define PLAYER_ROTATION_SPEED 500.0f
 #define PLAYER_ANIM_SPEED 0.1f
 
 // def bird
-#define BIRD_AMOUNT 100
+#define BIRD_AMOUNT 20
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
 #define BIRD_DEATH_GORE_PARTS 8
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
@@ -81,8 +82,10 @@ typedef enum Game_State {
 } Game_State;
 
 typedef enum Game_Level {
+    GAME_LEVEL_NONE = 0,
     GAME_LEVEL_FOREST,
     GAME_LEVEL_FIELD,
+    GAME_LEVEL_SNOW,
 } Game_Level;
 
 typedef enum Tex {
@@ -94,6 +97,11 @@ typedef enum Tex {
     TEX_ENV_CLOUDS,
     TEX_ENV_FIELD,
     TEX_ENV_FENCE,
+    TEX_ENV_WINTER_SKY,
+    TEX_ENV_MOUNTAINS,
+    TEX_ENV_WINTER_HILLS,
+    TEX_ENV_WINTER_TREES,
+    TEX_ENV_SNOW,
     TEX_GIANT_BIRD_1,
     TEX_GIANT_BIRD_2,
     TEX_GIANT_BIRD_3,
@@ -115,6 +123,13 @@ typedef enum Tex {
     TEX_YELLOW_BIRD_HEAD,
     TEX_YELLOW_BIRD_BODY,
     TEX_YELLOW_BIRD_WING,
+    TEX_BROWN_BIRD_1,
+    TEX_BROWN_BIRD_2,
+    TEX_BROWN_BIRD_3,
+    TEX_BROWN_BIRD_4,
+    TEX_BROWN_BIRD_HEAD,
+    TEX_BROWN_BIRD_BODY,
+    TEX_BROWN_BIRD_WING,
     TEX_BIRD_BLOOD_1,
     TEX_BIRD_BLOOD_2,
     TEX_BIRD_BLOOD_3,
@@ -122,6 +137,7 @@ typedef enum Tex {
     TEX_BIRD_EYE,
     TEX_BIRD_GORE_1,
     TEX_BIRD_GORE_2,
+    TEX_PLAYER_1,
     TEX_TOTAL,
 } Tex;
 
@@ -131,17 +147,11 @@ typedef enum Bird_Computer_State {
     BIRD_COMPUTER_STATE_CONTINUE_TO_NEXT_LEVEL,
 } Bird_Computer_State;
 
-typedef enum Scroll_Type {
-    SCROLL_TYPE_RIGHT,
-    SCROLL_TYPE_LEFT,
-    SCROLL_TYPE_DOWN,
-    SCROLL_TYPE_UP,
-} Scroll_Type;
-
 typedef enum Bird_Type {
     BIRD_TYPE_WHITE,
     BIRD_TYPE_GIANT,
     BIRD_TYPE_YELLOW,
+    BIRD_TYPE_BROWN,
 } Bird_Type;
 
 typedef enum Bird_State {
@@ -175,6 +185,7 @@ typedef struct State {
     int screen_width;
     int screen_height;
     Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
+    int scroll_env_amount;
     int bird_amount;
     int bird_counter;
     int birds_passed;
@@ -196,16 +207,17 @@ typedef struct Bird_Computer {
 
 typedef struct Scroll_Env {
     Tex tex;
-    Scroll_Type type;
-    float speed;
-    int vertical_amount;
-    int horizontal_amount;
-    Vector2 offset;
+    int horizontal_textures;
+    float horizontal_speed;
+    int vertical_textures;
+    float vertical_speed;
     Vector2 scroll;
+    unsigned char opacity;
 } Scroll_Env;
 
 typedef struct Player {
     Vector2 position;
+    float rotation;
     float velocity;
     int damage;
     int current_key;
@@ -233,7 +245,7 @@ typedef struct Bird {
 float randf(float min, float max);
 Vector2 vec2_normalized(float x, float y);
 void tex_atlas_setup(State *state);
-void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation);
+void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity);
 void scroll_env_render(State *state, Scroll_Env *env);
 
 #endif // MAIN_H

@@ -17,18 +17,20 @@ static void add_texture_offsets(State *state, int *x, int *y, Tex tex, int size,
 }
 
 void tex_atlas_setup(State *state) {
-    state->tex_atlas = LoadTexture("./textures/atlas.png");
+    state->tex_atlas = LoadTexture("./textures/atlas2.png");
     int x = ATLAS_PADDING;
     int y = ATLAS_PADDING;
-    add_texture_offsets(state, &x, &y, TEX_ENV_NIGHT_SKY, 128, 4, true);
-    add_texture_offsets(state, &x, &y, TEX_ENV_DAY_SKY, 128, 4, true);
+    add_texture_offsets(state, &x, &y, TEX_ENV_NIGHT_SKY, 128, 8, true);
+    add_texture_offsets(state, &x, &y, TEX_ENV_WINTER_SKY, 128, 5, true);
     add_texture_offsets(state, &x, &y, TEX_GIANT_BIRD_1, 64, 7, true);
-    add_texture_offsets(state, &x, &y, TEX_WHITE_BIRD_1, 32, 14, true);
+    add_texture_offsets(state, &x, &y, TEX_WHITE_BIRD_1, 32, 21, true);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_1, 32, 2, false);
-    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, true);
+    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
+    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
+    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 1, true);
 }
 
-void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation) {
+void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity) {
     Rectangle source = {
         .x = state->tex_atlas_offsets[tex].x,
         .y = state->tex_atlas_offsets[tex].y,
@@ -43,7 +45,7 @@ void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation) {
         .height = render_scale,
     };
     Vector2 origin = { render_scale / 2.0f, render_scale / 2.0f };
-    DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, WHITE);
+    DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, (Color){ 255, 255, 255, opacity});
 }
 
 void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation) {

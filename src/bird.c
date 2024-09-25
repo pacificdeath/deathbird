@@ -9,6 +9,8 @@ void birds_update(State *state, Bird *birds, float delta_time) {
     }
     for (int i = 0; i < state->bird_counter; i++) {
         switch (birds[i].state) {
+        case BIRD_STATE_NONE:
+            break;
         case BIRD_STATE_ALIVE: {
             birds[i].position.x -= birds[i].move_speed * delta_time;
             if (birds[i].position.x < BIRD_RESET_LEFT) {
@@ -90,6 +92,9 @@ void birds_update(State *state, Bird *birds, float delta_time) {
             case BIRD_TYPE_GIANT: {
                 birds[i].health = 30;
             } break;
+            case BIRD_TYPE_BROWN: {
+                birds[i].health = 10;
+            } break;
             }
         } break;
         }
@@ -99,6 +104,8 @@ void birds_update(State *state, Bird *birds, float delta_time) {
 void birds_render(State *state, Bird *birds) {
     for (int i = 0; i < BIRD_AMOUNT; i++) {
         switch (birds[i].state) {
+        case BIRD_STATE_NONE:
+            break;
         case BIRD_STATE_ALIVE: {
             Tex bird_tex;
             switch (birds[i].type) {
@@ -106,14 +113,15 @@ void birds_render(State *state, Bird *birds) {
             case BIRD_TYPE_WHITE: bird_tex = TEX_WHITE_BIRD_1 + birds[i].current_tex; break;
             case BIRD_TYPE_GIANT: bird_tex = TEX_GIANT_BIRD_1 + birds[i].current_tex; break;
             case BIRD_TYPE_YELLOW: bird_tex = TEX_YELLOW_BIRD_1 + birds[i].current_tex; break;
+            case BIRD_TYPE_BROWN: bird_tex = TEX_BROWN_BIRD_1 + birds[i].current_tex; break;
             }
-            tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f);
+            tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, OPAQUE);
         } break;
         case BIRD_STATE_DYING:
         case BIRD_STATE_DEAD: {
             if (birds[i].blood_idx < BIRD_BLOOD_TEX_AMOUNT) {
                 Tex blood_tex = TEX_BIRD_BLOOD_1 + birds[i].blood_idx;
-                tex_atlas_draw(state, blood_tex, birds[i].position, 0.0f);
+                tex_atlas_draw(state, blood_tex, birds[i].position, 0.0f, OPAQUE);
             }
             Tex textures[BIRD_DEATH_PARTS];
             // in order of rendering
@@ -149,11 +157,19 @@ void birds_render(State *state, Bird *birds) {
                 textures[BIRD_DEATH_PARTS - 2] = TEX_YELLOW_BIRD_HEAD;
                 textures[BIRD_DEATH_PARTS - 1] = TEX_BIRD_EYE;
             } break;
+            case BIRD_TYPE_BROWN: {
+                textures[BIRD_DEATH_PARTS - 6] = TEX_BROWN_BIRD_WING;
+                textures[BIRD_DEATH_PARTS - 5] = TEX_BROWN_BIRD_BODY;
+                textures[BIRD_DEATH_PARTS - 4] = TEX_BROWN_BIRD_WING;
+                textures[BIRD_DEATH_PARTS - 3] = TEX_BIRD_EYE;
+                textures[BIRD_DEATH_PARTS - 2] = TEX_BROWN_BIRD_HEAD;
+                textures[BIRD_DEATH_PARTS - 1] = TEX_BIRD_EYE;
+            } break;
             }
             for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
                 Tex tex = textures[j];
                 float rotation = birds[i].death_rotations[j];
-                tex_atlas_draw(state, tex, birds[i].death_positions[j], rotation);
+                tex_atlas_draw(state, tex, birds[i].death_positions[j], rotation, OPAQUE);
             }
         } break;
         case BIRD_STATE_RESET: break;

@@ -24,10 +24,16 @@ void bird_computer_init(Bird_Computer *bird_computer) {
 
 void bird_computer_current_state_setup(State *state) {
     switch (state->game_level) {
+    case GAME_LEVEL_NONE: {
+
+    } break;
     case GAME_LEVEL_FOREST: {
 
     } break;
     case GAME_LEVEL_FIELD: {
+
+    } break;
+    case GAME_LEVEL_SNOW: {
 
     } break;
     }

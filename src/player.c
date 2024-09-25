@@ -2,6 +2,7 @@
 #include "main.h"
 
 void player_update(State *state, Player *player, Bird *birds, float delta_time) {
+    player->rotation += PLAYER_ROTATION_SPEED * delta_time;
     player->velocity += PLAYER_GRAVITY * delta_time;
     player->position.y -= player->velocity * delta_time;
     if (player->position.y < GROUND_Y) {
@@ -66,5 +67,5 @@ void player_update(State *state, Player *player, Bird *birds, float delta_time) 
 }
 
 void player_render(State *state, Player *player) {
-    tex_atlas_draw(state, TEX_YELLOW_BIRD_1, player->position, 0.0f);
+    tex_atlas_draw(state, TEX_PLAYER_1, player->position, player->rotation, OPAQUE);
 }

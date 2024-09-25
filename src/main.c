@@ -104,7 +104,7 @@ int main(void) {
     Bird_Computer *bird_computer = (Bird_Computer *)malloc(sizeof(Bird_Computer));
     bird_computer_init(bird_computer);
 
-    Scroll_Env *scroll_envs = (Scroll_Env *)malloc(sizeof(Scroll_Env) * SCROLL_ENV_AMOUNT);
+    Scroll_Env *scroll_envs = (Scroll_Env *)malloc(sizeof(Scroll_Env) * SCROLL_ENV_CAPACITY);
     scroll_env_current_state_setup(state, scroll_envs);
 
     Player *player = (Player *)calloc(1, sizeof(Player));
@@ -155,14 +155,17 @@ int main(void) {
             state->bird_amount = randf(10, BIRD_AMOUNT - 1);
             state->bird_counter = 0;
             state->birds_passed = 0;
-            state->bird_rate = 1.0f;
+            state->bird_rate = 0.5f;
             state->bird_timer = 0.0f;
             switch (state->game_level) {
+            case GAME_LEVEL_NONE: state->game_level = GAME_LEVEL_FOREST; break;
             case GAME_LEVEL_FOREST: state->game_level = GAME_LEVEL_FIELD; break;
-            case GAME_LEVEL_FIELD: state->game_level = GAME_LEVEL_FOREST; break;
+            case GAME_LEVEL_FIELD: state->game_level = GAME_LEVEL_SNOW; break;
+            case GAME_LEVEL_SNOW: state->game_level = GAME_LEVEL_FOREST; break;
             }
             scroll_env_current_state_setup(state, scroll_envs);
             switch (state->game_level) {
+            case GAME_LEVEL_NONE:
             case GAME_LEVEL_FOREST: {
                 int giant_bird = GetRandomValue(0, state->bird_amount);
                 for (int i = 0; i < state->bird_amount; i++) {
@@ -182,6 +185,14 @@ int main(void) {
                 for (int i = 0; i < state->bird_amount; i++) {
                     birds[i].state = BIRD_STATE_RESET;
                     birds[i].type = BIRD_TYPE_YELLOW;
+                    birds[i].health = 10;
+                    birds[i].collision_radius = 0.1f;
+                }
+            } break;
+            case GAME_LEVEL_SNOW: {
+                for (int i = 0; i < state->bird_amount; i++) {
+                    birds[i].state = BIRD_STATE_RESET;
+                    birds[i].type = BIRD_TYPE_BROWN;
                     birds[i].health = 10;
                     birds[i].collision_radius = 0.1f;
                 }
@@ -209,6 +220,8 @@ int main(void) {
         ClearBackground(OUT_OF_BOUNDS_COLOR);
 
         switch (state->game_state) {
+        case GAME_STATE_NEXT_LEVEL:
+            continue;
         case GAME_STATE_DEATHBIRD: {
             scroll_env_render(state, scroll_envs);
             birds_render(state, birds);
