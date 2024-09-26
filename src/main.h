@@ -43,6 +43,9 @@
 #define PLAYER_HORIZONTAL_SPEED 2.0f
 #define PLAYER_ROTATION_SPEED 500.0f
 #define PLAYER_ANIM_SPEED 0.1f
+#define PLAYER_SMALLEST_VALID_MULTIPLIER 2
+#define PLAYER_MULTIPLIER_MAX 10
+#define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 // def bird
 #define BIRD_CAPACITY 8
@@ -72,7 +75,7 @@
 #define BIRD_COMPUTER_FG_COLOR (Color) { 255, 255, 255, 255 }
 #define BIRD_COMPUTER_TEXT_COLOR (Color) { 255, 255, 0, 255 }
 #define BIRD_COMPUTER_HEADER_SIZE 0.1
-#define BIRD_COMPUTER_OPTIONS 7
+#define BIRD_COMPUTER_LINE_COUNT 7
 #define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
 
 typedef enum Game_State {
@@ -142,9 +145,8 @@ typedef enum Tex {
 } Tex;
 
 typedef enum Bird_Computer_State {
-    BIRD_COMPUTER_STATE_INACTIVE,
-    BIRD_COMPUTER_STATE_ACTIVE,
-    BIRD_COMPUTER_STATE_CONTINUE_TO_NEXT_LEVEL,
+    BIRD_COMPUTER_STATE_OPTIONS,
+    BIRD_COMPUTER_STATE_SUB_OPTIONS,
 } Bird_Computer_State;
 
 typedef enum Bird_Computer_Option {
@@ -194,9 +196,14 @@ typedef struct Bird_Computer_Dimensions {
 } Bird_Computer_Dimensions;
 
 typedef struct Bird_Computer {
+    Bird_Computer_State state;
     Font font;
-    int option_line;
-    int option_line_count;
+    int option_idx;
+    int option_count;
+    int option_area_offset;
+    int sub_option_idx;
+    int sub_option_count;
+    int sub_option_area_offset;
 } Bird_Computer;
 
 typedef struct Scroll_Env {
@@ -217,7 +224,12 @@ typedef struct Player {
     int current_input_key;
     int anim_step;
     float anim_time;
+    int level_score;
     int obliterated_birds;
+    int bird_multiplier;
+    int bird_multiplier_display;
+    float bird_multiplier_timer;
+    int multiplier_amounts[PLAYER_MULTIPLIER_MAX - 1]; // exclude 1x multiplier
 } Player;
 
 typedef struct Bird {

@@ -131,7 +131,7 @@ int main(void) {
         case GAME_STATE_NEXT_LEVEL: {
             state->player.position.x = 0.0f;
             state->player.position.y = 1.0f;
-            state->level_bird_amount = 100;
+            state->level_bird_amount = 2;
             state->level_requested_birds = 0;
             state->level_spawned_birds = 0;
             state->level_passed_birds = 0;
@@ -155,6 +155,7 @@ int main(void) {
             player_update(state);
             birds_update(state);
             if (state->level_passed_birds == state->level_bird_amount) {
+                bird_computer_level_setup(state);
                 state->game_state = GAME_STATE_BIRD_COMPUTER;
             }
         } break;
