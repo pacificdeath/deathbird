@@ -14,7 +14,8 @@ static Vector2 env_tex_offset(Vector2 tex_size) {
     };
 }
 
-void scroll_env_current_state_setup(State *state, Scroll_Env scroll_envs[SCROLL_ENV_CAPACITY] ) {
+void scroll_env_level_setup(State *state) {
+    Scroll_Env *scroll_envs = state->scroll_envs;
     switch (state->game_level) {
     case GAME_LEVEL_NONE: {
         state->scroll_env_amount = 0;
@@ -126,16 +127,17 @@ void scroll_env_current_state_setup(State *state, Scroll_Env scroll_envs[SCROLL_
     }
 }
 
-void scroll_env_update(State *state, Scroll_Env *scroll_envs, float delta_time) {
+void scroll_env_update(State *state) {
+    Scroll_Env *scroll_envs = state->scroll_envs;
     Vector2 tex_size = env_tex_size();
     for (int i = 0; i < state->scroll_env_amount; i++) {
-        scroll_envs[i].scroll.x += (scroll_envs[i].horizontal_speed * delta_time);
+        scroll_envs[i].scroll.x += (scroll_envs[i].horizontal_speed * state->delta_time);
         if (scroll_envs[i].horizontal_speed > 0.0f && scroll_envs[i].scroll.x > 0.0f) {
             scroll_envs[i].scroll.x -= tex_size.x;
         } else if (scroll_envs[i].horizontal_speed < 0.0f && scroll_envs[i].scroll.x < -tex_size.x) {
             scroll_envs[i].scroll.x += tex_size.x;
         }
-        scroll_envs[i].scroll.y += (scroll_envs[i].vertical_speed * delta_time);
+        scroll_envs[i].scroll.y += (scroll_envs[i].vertical_speed * state->delta_time);
         if (scroll_envs[i].vertical_speed > 0.0f && scroll_envs[i].scroll.y > 0.0f) {
             scroll_envs[i].scroll.y -= tex_size.y;
         } else if (scroll_envs[i].vertical_speed < 0.0f && scroll_envs[i].scroll.y < -tex_size.y) {
@@ -144,7 +146,8 @@ void scroll_env_update(State *state, Scroll_Env *scroll_envs, float delta_time) 
     }
 }
 
-void scroll_env_render(State *state, Scroll_Env *scroll_envs) {
+void scroll_env_render(State *state) {
+    Scroll_Env *scroll_envs = state->scroll_envs;
     Vector2 tex_size = {
         .x = 2.0f / GAME_WIDTH_RATIO,
         .y = 2.0f / GAME_HEIGHT_RATIO,

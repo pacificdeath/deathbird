@@ -1,10 +1,16 @@
 #include "raylib.h"
 #include "main.h"
 
-void player_update(State *state, Player *player, Bird *birds, float delta_time) {
-    player->rotation += PLAYER_ROTATION_SPEED * delta_time;
-    player->velocity += PLAYER_GRAVITY * delta_time;
-    player->position.y -= player->velocity * delta_time;
+void player_level_setup(State *state) {
+    state->player.obliterated_birds = 0;
+}
+
+void player_update(State *state) {
+    Player *player = &state->player;
+    Bird *birds = state->birds;
+    player->rotation += PLAYER_ROTATION_SPEED * state->delta_time;
+    player->velocity += PLAYER_GRAVITY * state->delta_time;
+    player->position.y -= player->velocity * state->delta_time;
     if (player->position.y < GROUND_Y) {
         player->position.y = GROUND_Y;
         player->velocity *= -1;
@@ -15,22 +21,22 @@ void player_update(State *state, Player *player, Bird *birds, float delta_time) 
         player->velocity *= -1;
     }
     if (IsKeyPressed(KEY_LEFT)) {
-        player->current_key = KEY_LEFT;
-    } else if (!IsKeyDown(KEY_LEFT) && player->current_key == KEY_LEFT) {
-        player->current_key = 0;
+        player->current_input_key = KEY_LEFT;
+    } else if (!IsKeyDown(KEY_LEFT) && player->current_input_key == KEY_LEFT) {
+        player->current_input_key = 0;
     }
     if (IsKeyPressed(KEY_RIGHT)) {
-        player->current_key = KEY_RIGHT;
-    } else if (!IsKeyDown(KEY_RIGHT) && player->current_key == KEY_RIGHT) {
-        player->current_key = 0;
+        player->current_input_key = KEY_RIGHT;
+    } else if (!IsKeyDown(KEY_RIGHT) && player->current_input_key == KEY_RIGHT) {
+        player->current_input_key = 0;
     }
-    switch (player->current_key)
+    switch (player->current_input_key)
     {
     case KEY_LEFT:
-        player->position.x -= PLAYER_HORIZONTAL_SPEED * delta_time;
+        player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
         break;
     case KEY_RIGHT:
-        player->position.x += PLAYER_HORIZONTAL_SPEED * delta_time;
+        player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
         break;
     }
     for (int i = 0; i < BIRD_CAPACITY; i++) {
@@ -42,6 +48,7 @@ void player_update(State *state, Player *player, Bird *birds, float delta_time) 
         if (x_distance < birds[i].collision_radius && y_distance < birds[i].collision_radius) {
             birds[i].health -= player->damage;
             if (birds[i].health <= 0) {
+                player->obliterated_birds++;
                 birds[i].state = BIRD_STATE_DYING;
                 Vector2 direction = vec2_normalized(
                     birds[i].position.x - player->position.x,
@@ -59,13 +66,13 @@ void player_update(State *state, Player *player, Bird *birds, float delta_time) 
             }
         }
     }
-    player->anim_time += delta_time;
+    player->anim_time += state->delta_time;
     if (player->anim_time > PLAYER_ANIM_SPEED) {
         player->anim_time = 0.0f;
         player->anim_step = (player->anim_step + 1) % PLAYER_ANIM_TEX_AMOUNT;
     }
 }
 
-void player_render(State *state, Player *player) {
-    tex_atlas_draw(state, TEX_PLAYER_1, player->position, player->rotation, OPAQUE);
+void player_render(State *state) {
+    tex_atlas_draw(state, TEX_PLAYER_1, state->player.position, state->player.rotation, OPAQUE);
 }

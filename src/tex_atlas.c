@@ -16,7 +16,7 @@ static void add_texture_offsets(State *state, int *x, int *y, Tex tex, int size,
     }
 }
 
-void tex_atlas_setup(State *state) {
+void tex_atlas_init(State *state) {
     state->tex_atlas = LoadTexture("./textures/atlas2.png");
     int x = ATLAS_PADDING;
     int y = ATLAS_PADDING;
@@ -28,6 +28,10 @@ void tex_atlas_setup(State *state) {
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
     add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 1, true);
+}
+
+void tex_atlas_cleanup(State *state) {
+    UnloadTexture(state->tex_atlas);
 }
 
 void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity) {

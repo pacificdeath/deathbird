@@ -45,7 +45,7 @@
 #define PLAYER_ANIM_SPEED 0.1f
 
 // def bird
-#define BIRD_CAPACITY 2
+#define BIRD_CAPACITY 8
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
 #define BIRD_DEATH_GORE_PARTS 8
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
@@ -66,8 +66,8 @@
 #define BIRD_VERTICAL_FREEDOM 0.8f
 
 // def bird computer
-#define BIRD_COMPUTER_FONT "raster.ttf"
-#define BIRD_COMPUTER_FONT_SIZE 15
+#define BIRD_COMPUTER_FONT "bios.ttf"
+#define BIRD_COMPUTER_FONT_SIZE 250
 #define BIRD_COMPUTER_BG_COLOR (Color) { 0, 0, 192, 255 }
 #define BIRD_COMPUTER_FG_COLOR (Color) { 255, 255, 255, 255 }
 #define BIRD_COMPUTER_TEXT_COLOR (Color) { 255, 255, 0, 255 }
@@ -147,6 +147,22 @@ typedef enum Bird_Computer_State {
     BIRD_COMPUTER_STATE_CONTINUE_TO_NEXT_LEVEL,
 } Bird_Computer_State;
 
+typedef enum Bird_Computer_Option {
+    BIRD_COMPUTER_OPTION_RESULTS,
+    BIRD_COMPUTER_OPTION_CONTINUE,
+    BIRD_COMPUTER_OPTION_3,
+    BIRD_COMPUTER_OPTION_4,
+    BIRD_COMPUTER_OPTION_5,
+    BIRD_COMPUTER_OPTION_6,
+    BIRD_COMPUTER_OPTION_7,
+} Bird_Computer_Option;
+
+typedef enum Bird_Computer_Text_Type {
+    BIRD_COMPUTER_TEXT_TYPE_HEADER,
+    BIRD_COMPUTER_TEXT_TYPE_OPTION,
+    BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION,
+} Bird_Computer_Text_Type;
+
 typedef enum Bird_Type {
     BIRD_TYPE_WHITE,
     BIRD_TYPE_GIANT,
@@ -167,42 +183,20 @@ typedef struct Tex_Atlas_Offset {
     int size;
 } Tex_Atlas_Offset;
 
-typedef struct State {
-    Game_State game_state;
-    Game_Level game_level;
-    Texture tex_atlas;
-    Tex_Atlas_Offset tex_atlas_offsets[TEX_TOTAL];
-    float scale_multiplier;
-    int game_width;
-    int game_height;
-    int game_left;
-    int game_right;
-    int game_top;
-    int game_bottom;
-    int game_center_x;
-    int game_center_y;
-    int screen_width;
-    int screen_height;
-    Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
-    int scroll_env_amount;
-    int available_birds;
-    int level_bird_amount;
-    int level_bird_counter;
-    int level_birds_passed;
-    float level_bird_rate;
-    float level_bird_timer;
-} State;
-
-typedef struct Bird_Computer_Option {
-    char name[BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH];
-    int name_len;
-} Bird_Computer_Option;
+typedef struct Bird_Computer_Dimensions {
+    float font_size;
+    float x_fract;
+    float y_fract;
+    float header_size;
+    float line_section_size;
+    float footer_size;
+    float line_size;
+} Bird_Computer_Dimensions;
 
 typedef struct Bird_Computer {
     Font font;
     int option_line;
     int option_line_count;
-    Bird_Computer_Option options[BIRD_COMPUTER_OPTIONS];
 } Bird_Computer;
 
 typedef struct Scroll_Env {
@@ -220,9 +214,10 @@ typedef struct Player {
     float rotation;
     float velocity;
     int damage;
-    int current_key;
+    int current_input_key;
     int anim_step;
     float anim_time;
+    int obliterated_birds;
 } Player;
 
 typedef struct Bird {
@@ -242,10 +237,49 @@ typedef struct Bird {
     int blood_idx;
 } Bird;
 
+typedef struct State {
+    int screen_width;
+    int screen_height;
+
+    Game_State game_state;
+    Game_Level game_level;
+    int game_width;
+    int game_height;
+    int game_left;
+    int game_right;
+    int game_top;
+    int game_bottom;
+    int game_center_x;
+    int game_center_y;
+
+    Bird_Computer bird_computer;
+
+    Texture tex_atlas;
+    Tex_Atlas_Offset tex_atlas_offsets[TEX_TOTAL];
+
+    Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
+
+    Scroll_Env scroll_envs[SCROLL_ENV_CAPACITY];
+
+    Player player;
+
+    Bird birds[BIRD_CAPACITY];
+    int birds_in_use;
+    int level_requested_birds;
+    int level_spawned_birds;
+    int level_bird_amount;
+    int level_passed_birds;
+    float level_bird_rate;
+    float level_bird_timer;
+    float scale_multiplier;
+    float delta_time;
+    int scroll_env_amount;
+} State;
+
 float randf(float min, float max);
 Vector2 vec2_normalized(float x, float y);
-void tex_atlas_setup(State *state);
+void tex_atlas_init(State *state);
 void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity);
-void scroll_env_render(State *state, Scroll_Env *env);
+void scroll_env_render(State *state);
 
 #endif // MAIN_H
