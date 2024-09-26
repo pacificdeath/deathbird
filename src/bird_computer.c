@@ -22,7 +22,7 @@ void bird_computer_init(Bird_Computer *bird_computer) {
     bird_computer->option_line_count = 7;
 }
 
-void bird_computer_current_state_setup(State *state) {
+void bird_computer_current_state_setup(State *state, Bird_Computer *bird_computer) {
     switch (state->game_level) {
     case GAME_LEVEL_NONE: {
 

@@ -45,7 +45,7 @@
 #define PLAYER_ANIM_SPEED 0.1f
 
 // def bird
-#define BIRD_AMOUNT 20
+#define BIRD_CAPACITY 2
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
 #define BIRD_DEATH_GORE_PARTS 8
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
@@ -155,11 +155,10 @@ typedef enum Bird_Type {
 } Bird_Type;
 
 typedef enum Bird_State {
-    BIRD_STATE_NONE,
+    BIRD_STATE_AVAILABLE,
     BIRD_STATE_ALIVE,
     BIRD_STATE_DYING,
     BIRD_STATE_DEAD,
-    BIRD_STATE_RESET,
 } Bird_State;
 
 typedef struct Tex_Atlas_Offset {
@@ -186,11 +185,12 @@ typedef struct State {
     int screen_height;
     Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
     int scroll_env_amount;
-    int bird_amount;
-    int bird_counter;
-    int birds_passed;
-    float bird_rate;
-    float bird_timer;
+    int available_birds;
+    int level_bird_amount;
+    int level_bird_counter;
+    int level_birds_passed;
+    float level_bird_rate;
+    float level_bird_timer;
 } State;
 
 typedef struct Bird_Computer_Option {

@@ -33,7 +33,7 @@ void player_update(State *state, Player *player, Bird *birds, float delta_time) 
         player->position.x += PLAYER_HORIZONTAL_SPEED * delta_time;
         break;
     }
-    for (int i = 0; i < BIRD_AMOUNT; i++) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
         if (birds[i].state != BIRD_STATE_ALIVE) {
             continue;
         }

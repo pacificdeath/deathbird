@@ -1,21 +1,68 @@
 #include "raylib.h"
 #include "main.h"
 
-void birds_update(State *state, Bird *birds, float delta_time) {
-    state->bird_timer += delta_time;
-    if (state->bird_timer > state->bird_rate) {
-        state->bird_timer = 0.0f;
-        state->bird_counter++;
+static void set_bird_available(State *state, Bird *bird) {
+    bird->state = BIRD_STATE_AVAILABLE;
+    state->available_birds++;
+    state->level_birds_passed++;
+}
+
+void bird_current_state_setup(State *state, Bird birds[BIRD_CAPACITY]) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
+        birds[i].state = BIRD_STATE_AVAILABLE;
     }
-    for (int i = 0; i < state->bird_counter; i++) {
+    state->available_birds = BIRD_CAPACITY;
+}
+
+void birds_update(State *state, Bird birds[BIRD_CAPACITY], float delta_time) {
+    int requested_birds = state->level_bird_counter - state->level_birds_passed;
+    bool level_needs_more_birds = state->level_bird_counter < state->level_bird_amount;
+    if (level_needs_more_birds) {
+        bool bird_timer_is_up = state->level_bird_timer > state->level_bird_rate;
+        if (!bird_timer_is_up) {
+            state->level_bird_timer += delta_time;
+        } else if (requested_birds < BIRD_CAPACITY) {
+            state->level_bird_timer = 0.0f;
+            state->level_bird_counter++;
+            requested_birds++;
+        }
+    }
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
         switch (birds[i].state) {
-        case BIRD_STATE_NONE:
-            break;
+        case BIRD_STATE_AVAILABLE: {
+            int birds_in_use = BIRD_CAPACITY - state->available_birds;
+            bool we_need_this_bird = birds_in_use < requested_birds;
+            if (!we_need_this_bird) {
+                break;
+            }
+            state->available_birds--;
+            birds[i].position.x = BIRD_RESET_RIGHT;
+            birds[i].position.y = randf(-BIRD_VERTICAL_FREEDOM, BIRD_VERTICAL_FREEDOM);
+            birds[i].move_speed = randf(BIRD_MIN_MOVE_SPEED, BIRD_MAX_MOVE_SPEED);
+            switch (state->game_level)
+            {
+            case GAME_LEVEL_FOREST: {
+                birds[i].type = BIRD_TYPE_WHITE;
+                birds[i].health = 10;
+                birds[i].collision_radius = 0.1f;
+            } break;
+            case GAME_LEVEL_FIELD: {
+                birds[i].type = BIRD_TYPE_YELLOW;
+                birds[i].health = 10;
+                birds[i].collision_radius = 0.1f;
+            } break;
+            case GAME_LEVEL_SNOW: {
+                birds[i].type = BIRD_TYPE_BROWN;
+                birds[i].health = 10;
+                birds[i].collision_radius = 0.1f;
+            } break;
+            }
+            birds[i].state = BIRD_STATE_ALIVE;
+        } break;
         case BIRD_STATE_ALIVE: {
             birds[i].position.x -= birds[i].move_speed * delta_time;
             if (birds[i].position.x < BIRD_RESET_LEFT) {
-                state->birds_passed++;
-                birds[i].state = BIRD_STATE_NONE;
+                set_bird_available(state, &birds[i]);
             } else {
                 birds[i].anim_time += delta_time;
                 if (birds[i].anim_time > BIRD_ANIM_SPEED) {
@@ -73,28 +120,7 @@ void birds_update(State *state, Bird *birds, float delta_time) {
                 }
             }
             if (all_off_screen && birds[i].blood_idx >= BIRD_BLOOD_TEX_AMOUNT) {
-                state->birds_passed++;
-                birds[i].state = BIRD_STATE_NONE;
-            }
-        } break;
-        case BIRD_STATE_RESET: {
-            birds[i].position.x = BIRD_RESET_RIGHT;
-            birds[i].position.y = randf(-BIRD_VERTICAL_FREEDOM, BIRD_VERTICAL_FREEDOM);
-            birds[i].move_speed = randf(BIRD_MIN_MOVE_SPEED, BIRD_MAX_MOVE_SPEED);
-            birds[i].state = BIRD_STATE_ALIVE;
-            switch (birds[i].type) {
-            case BIRD_TYPE_WHITE: {
-                birds[i].health = 10;
-            } break;
-            case BIRD_TYPE_YELLOW: {
-                birds[i].health = 10;
-            } break;
-            case BIRD_TYPE_GIANT: {
-                birds[i].health = 30;
-            } break;
-            case BIRD_TYPE_BROWN: {
-                birds[i].health = 10;
-            } break;
+                set_bird_available(state, &birds[i]);
             }
         } break;
         }
@@ -102,9 +128,9 @@ void birds_update(State *state, Bird *birds, float delta_time) {
 }
 
 void birds_render(State *state, Bird *birds) {
-    for (int i = 0; i < BIRD_AMOUNT; i++) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
         switch (birds[i].state) {
-        case BIRD_STATE_NONE:
+        case BIRD_STATE_AVAILABLE:
             break;
         case BIRD_STATE_ALIVE: {
             Tex bird_tex;
@@ -172,7 +198,6 @@ void birds_render(State *state, Bird *birds) {
                 tex_atlas_draw(state, tex, birds[i].death_positions[j], rotation, OPAQUE);
             }
         } break;
-        case BIRD_STATE_RESET: break;
         }
     }
 }

@@ -110,8 +110,8 @@ int main(void) {
     Player *player = (Player *)calloc(1, sizeof(Player));
     player->damage = 10;
 
-    Bird *birds = (Bird *)calloc(BIRD_AMOUNT, sizeof(Bird));
-    for (int i = 0; i < BIRD_AMOUNT; i++) {
+    Bird *birds = (Bird *)calloc(BIRD_CAPACITY, sizeof(Bird));
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
         birds[i].move_speed = BIRD_MAX_MOVE_SPEED;
         birds[i].position.x = BIRD_RESET_LEFT;
         if (i == 0) {
@@ -152,11 +152,11 @@ int main(void) {
         case GAME_STATE_NEXT_LEVEL: {
             player->position.x = 0.0f;
             player->position.y = 1.0f;
-            state->bird_amount = randf(10, BIRD_AMOUNT - 1);
-            state->bird_counter = 0;
-            state->birds_passed = 0;
-            state->bird_rate = 0.5f;
-            state->bird_timer = 0.0f;
+            state->level_bird_amount = 3;
+            state->level_bird_counter = 0;
+            state->level_birds_passed = 0;
+            state->level_bird_rate = 2.0f;
+            state->level_bird_timer = 0.0f;
             switch (state->game_level) {
             case GAME_LEVEL_NONE: state->game_level = GAME_LEVEL_FOREST; break;
             case GAME_LEVEL_FOREST: state->game_level = GAME_LEVEL_FIELD; break;
@@ -164,40 +164,7 @@ int main(void) {
             case GAME_LEVEL_SNOW: state->game_level = GAME_LEVEL_FOREST; break;
             }
             scroll_env_current_state_setup(state, scroll_envs);
-            switch (state->game_level) {
-            case GAME_LEVEL_NONE:
-            case GAME_LEVEL_FOREST: {
-                int giant_bird = GetRandomValue(0, state->bird_amount);
-                for (int i = 0; i < state->bird_amount; i++) {
-                    birds[i].state = BIRD_STATE_RESET;
-                    if (i == giant_bird) {
-                        birds[i].type = BIRD_TYPE_GIANT;
-                        birds[i].health = 30;
-                        birds[i].collision_radius = 0.2f;
-                    } else {
-                        birds[i].type = BIRD_TYPE_WHITE;
-                        birds[i].health = 10;
-                        birds[i].collision_radius = 0.1f;
-                    }
-                }
-            } break;
-            case GAME_LEVEL_FIELD: {
-                for (int i = 0; i < state->bird_amount; i++) {
-                    birds[i].state = BIRD_STATE_RESET;
-                    birds[i].type = BIRD_TYPE_YELLOW;
-                    birds[i].health = 10;
-                    birds[i].collision_radius = 0.1f;
-                }
-            } break;
-            case GAME_LEVEL_SNOW: {
-                for (int i = 0; i < state->bird_amount; i++) {
-                    birds[i].state = BIRD_STATE_RESET;
-                    birds[i].type = BIRD_TYPE_BROWN;
-                    birds[i].health = 10;
-                    birds[i].collision_radius = 0.1f;
-                }
-            } break;
-            }
+            bird_current_state_setup(state, birds);
             state->game_state = GAME_STATE_DEATHBIRD;
         } break;
         case GAME_STATE_DEATHBIRD: {
@@ -206,7 +173,7 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state, player, birds, delta_time);
             birds_update(state, birds, delta_time);
-            if (state->birds_passed == state->bird_amount) {
+            if (state->level_birds_passed == state->level_bird_amount) {
                 state->game_state = GAME_STATE_BIRD_COMPUTER;
             }
         } break;
