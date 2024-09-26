@@ -135,7 +135,7 @@ int main(void) {
             state->level_requested_birds = 0;
             state->level_spawned_birds = 0;
             state->level_passed_birds = 0;
-            state->level_bird_rate = 0.0f;
+            state->level_bird_rate = 1.0f;
             state->level_bird_timer = 0.0f;
             switch (state->game_level) {
             case GAME_LEVEL_NONE: state->game_level = GAME_LEVEL_FOREST; break;
@@ -154,7 +154,7 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
-            if (state->level_passed_birds == state->level_bird_amount) {
+            if (birds_ready_for_exit(state) && player_ready_for_exit(state)) {
                 bird_computer_level_setup(state);
                 state->game_state = GAME_STATE_BIRD_COMPUTER;
             }

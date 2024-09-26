@@ -41,7 +41,7 @@ void birds_update(State *state) {
             case GAME_LEVEL_FOREST: {
                 birds[i].type = BIRD_TYPE_WHITE;
                 birds[i].health = 10;
-                birds[i].collision_radius = 0.1f;
+                birds[i].collision_radius = 0.2f;
             } break;
             case GAME_LEVEL_FIELD: {
                 birds[i].type = BIRD_TYPE_YELLOW;
@@ -122,6 +122,10 @@ void birds_update(State *state) {
         } break;
         }
     }
+}
+
+bool birds_ready_for_exit(State *state) {
+    return state->level_passed_birds == state->level_bird_amount;
 }
 
 void birds_render(State *state) {

@@ -44,6 +44,37 @@ static void draw_text(
     );
 }
 
+static void draw_scroll_bar(
+    State *state,
+    Bird_Computer_Dimensions *dimensions,
+    Bird_Computer_Text_Type type,
+    int item_count,
+    int item_area_offset
+) {
+    float full_size = dimensions->line_section_size - dimensions->y_fract;
+    Rectangle rec = {
+        .y = dimensions->header_size + (dimensions->y_fract / 2),
+        .width = dimensions->x_fract / 2.0f,
+        .height = full_size
+    };
+    switch (type) {
+    case BIRD_COMPUTER_TEXT_TYPE_OPTION: {
+        rec.x = state->game_center_x - (dimensions->x_fract);
+    } break;
+    case BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION: {
+        rec.x = state->game_right - (dimensions->x_fract);
+    } break;
+    }
+    DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
+    float scroll_bar_fract = full_size / item_count;
+    rec.x += state->scale_multiplier;
+    rec.y += (item_area_offset * scroll_bar_fract) + state->scale_multiplier;
+    float scale_multiplier_x2 = state->scale_multiplier * 2;
+    rec.width -= scale_multiplier_x2;
+    rec.height = (BIRD_COMPUTER_LINE_COUNT * scroll_bar_fract) - scale_multiplier_x2;
+    DrawRectangleRec(rec, BIRD_COMPUTER_FG_COLOR);
+}
+
 void bird_computer_init(State *state) {
     Bird_Computer *bird_computer = &state->bird_computer;
     bird_computer->font = LoadFont(BIRD_COMPUTER_FONT);
@@ -63,31 +94,56 @@ void bird_computer_level_setup(State *state) {
 
 void bird_computer_update(State *state) {
     Bird_Computer *bird_computer = &state->bird_computer;
-    if (IsKeyPressed(KEY_DOWN)) {
-        bird_computer->sub_option_idx = 0;
-        if (bird_computer->option_idx < BIRD_COMPUTER_LINE_COUNT - 1) {
-            bird_computer->option_idx++;
-        } else if (bird_computer->option_area_offset < bird_computer->option_count - BIRD_COMPUTER_LINE_COUNT) {
-            bird_computer->option_area_offset++;
+    int *idx;
+    int *area_offset;
+    int *count;
+    switch (bird_computer->state) {
+    case BIRD_COMPUTER_STATE_OPTIONS: {
+        idx = &bird_computer->option_idx;
+        area_offset = &bird_computer->option_area_offset;
+        count = &bird_computer->option_count;
+    } break;
+    case BIRD_COMPUTER_STATE_SUB_OPTIONS: {
+        idx = &bird_computer->sub_option_idx;
+        area_offset = &bird_computer->sub_option_area_offset;
+        count = &bird_computer->sub_option_count;
+    } break;
+    }
+    if (IsKeyPressed(KEY_DOWN) && *idx < (*count - 1)) {
+        if (*idx < BIRD_COMPUTER_LINE_COUNT - 1) {
+            (*idx)++;
+        } else if (*area_offset < (*count - BIRD_COMPUTER_LINE_COUNT)) {
+            (*area_offset)++;
         }
     }
     if (IsKeyPressed(KEY_UP)) {
-        bird_computer->sub_option_idx = 0;
-        if (bird_computer->option_idx > 0) {
-            bird_computer->option_idx--;
-        } else if (bird_computer->option_area_offset > 0) {
-            bird_computer->option_area_offset--;
+        if (*idx > 0) {
+            (*idx)--;
+        } else if (*area_offset > 0) {
+            (*area_offset)--;
         }
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        switch (bird_computer->option_idx) {
-        case BIRD_COMPUTER_OPTION_RESULTS: {
-            bird_computer->option_idx = -1;
-        } break;
-        case BIRD_COMPUTER_OPTION_CONTINUE: {
-            state->game_state = GAME_STATE_NEXT_LEVEL;
-        } break;
+    switch (bird_computer->state) {
+    case BIRD_COMPUTER_STATE_OPTIONS: {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            switch (bird_computer->option_idx + bird_computer->option_area_offset) {
+            case BIRD_COMPUTER_OPTION_RESULTS: {
+                bird_computer->state = BIRD_COMPUTER_STATE_SUB_OPTIONS;
+            } break;
+            case BIRD_COMPUTER_OPTION_CONTINUE: {
+                state->game_state = GAME_STATE_NEXT_LEVEL;
+            } break;
+            }
+            break;
         }
+    } break;
+    case BIRD_COMPUTER_STATE_SUB_OPTIONS: {
+        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_BACKSPACE)) {
+            bird_computer->sub_option_idx = 0;
+            bird_computer->sub_option_area_offset = 0;
+            bird_computer->state = BIRD_COMPUTER_STATE_OPTIONS;
+        }
+    } break;
     }
 }
 
@@ -118,22 +174,24 @@ void bird_computer_render(State *state) {
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
 
     if (bird_computer->option_count > BIRD_COMPUTER_LINE_COUNT) {
+        draw_scroll_bar(
+            state,
+            &dimensions,
+            BIRD_COMPUTER_TEXT_TYPE_OPTION,
+            bird_computer->option_count,
+            bird_computer->option_area_offset
+        );
         // scroll bar
-        float full_size = dimensions.line_section_size - dimensions.y_fract;
-        Rectangle rec = {
-            .x = state->game_center_x - (dimensions.x_fract),
-            .y = dimensions.header_size + (y_fract / 2),
-            .width = dimensions.x_fract / 2.0f,
-            .height = full_size
-        };
-        DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
-        float scroll_bar_fract = full_size / bird_computer->option_count;
-        rec.x += state->scale_multiplier;
-        rec.y += (bird_computer->option_area_offset * scroll_bar_fract) + state->scale_multiplier;
-        float scale_multiplier_x2 = state->scale_multiplier * 2;
-        rec.width -= scale_multiplier_x2;
-        rec.height = (BIRD_COMPUTER_LINE_COUNT * scroll_bar_fract) - scale_multiplier_x2;
-        DrawRectangleRec(rec, BIRD_COMPUTER_FG_COLOR);
+    }
+    if (bird_computer->sub_option_count > BIRD_COMPUTER_LINE_COUNT) {
+        draw_scroll_bar(
+            state,
+            &dimensions,
+            BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION,
+            bird_computer->sub_option_count,
+            bird_computer->sub_option_area_offset
+        );
+        // scroll bar
     }
 
     // header
@@ -184,47 +242,111 @@ void bird_computer_render(State *state) {
     }
 
     // sub options
-    char buffer[32];
-    int line_idx = 0;
-    switch (bird_computer->option_idx + bird_computer->option_area_offset) {
-    case BIRD_COMPUTER_OPTION_RESULTS: {
-        sprintf(buffer, "Level score: %i", state->player.level_score);
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, line_idx);
-        line_idx++;
-        sprintf(buffer, "Birds obliterated: %i/%i", state->player.obliterated_birds, state->level_bird_amount);
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, line_idx);
-        int player_max_multiplier_idx = PLAYER_MULTIPLIER_MAX - 1;
-        for (int i = 0; i < player_max_multiplier_idx - 1; i++) {
-            if (state->player.multiplier_amounts[i] == 0) {
-                continue;
+    {
+        char buffer[32];
+        int sub_option_idx = -bird_computer->sub_option_area_offset;
+        switch (bird_computer->option_idx + bird_computer->option_area_offset) {
+        case BIRD_COMPUTER_OPTION_RESULTS: {
+            sprintf(buffer, "Level score: %i", state->player.level_score);
+            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            sub_option_idx++;
+            for (int i = 0; i < 14; i++) {
+                sprintf(buffer, "death: %i", state->player.level_score);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                sub_option_idx++;
             }
-            line_idx++;
-            sprintf(buffer, "%ix Multipliers: %i", i + PLAYER_SMALLEST_VALID_MULTIPLIER, state->player.multiplier_amounts[i]);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, line_idx);
+            int obliterated_birds_total = 0;
+            for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
+                obliterated_birds_total += state->player.obliterated_birds[i];
+            }
+            sprintf(buffer, "Birds obliterated: %i/%i", obliterated_birds_total, state->level_bird_amount);
+            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            int player_max_multiplier_idx = PLAYER_MULTIPLIER_MAX - PLAYER_SMALLEST_VALID_MULTIPLIER;
+            for (int i = 0; i < player_max_multiplier_idx - 1; i++) {
+                if (state->player.multiplier_amounts[i] == 0) {
+                    continue;
+                }
+                sub_option_idx++;
+                int multiplier = i + PLAYER_SMALLEST_VALID_MULTIPLIER;
+                sprintf(buffer, "%ix Multipliers: %i (%i score)", i + PLAYER_SMALLEST_VALID_MULTIPLIER, state->player.multiplier_amounts[i], multiplier * multiplier);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+            dbgi(player_max_multiplier_idx);
+            if (state->player.multiplier_amounts[player_max_multiplier_idx] > 0) {
+                sub_option_idx++;
+                sprintf(buffer, "Obliterations: %i (100 score)", state->player.multiplier_amounts[player_max_multiplier_idx]);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+            if (state->player.obliterated_birds[BIRD_TYPE_WHITE] > 0) {
+                sub_option_idx++;
+                sprintf(buffer, "White birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_WHITE]);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+            if (state->player.obliterated_birds[BIRD_TYPE_GIANT] > 0) {
+                sub_option_idx++;
+                sprintf(buffer, "Giant birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_GIANT]);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+            if (state->player.obliterated_birds[BIRD_TYPE_YELLOW] > 0) {
+                sub_option_idx++;
+                sprintf(buffer, "Yellow birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_YELLOW]);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+            if (state->player.obliterated_birds[BIRD_TYPE_BROWN] > 0) {
+                sub_option_idx++;
+                sprintf(buffer, "Brown birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_BROWN]);
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+            }
+        } break;
+        case BIRD_COMPUTER_OPTION_CONTINUE: {
+            Tex tex;
+            int amount;
+            switch (state->game_level) {
+            case GAME_LEVEL_FOREST: {
+                tex = TEX_ENV_DAY_SKY;
+                amount = 4;
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Field", 4);
+            } break;
+            case GAME_LEVEL_FIELD: {
+                tex = TEX_ENV_WINTER_SKY;
+                amount = 4;
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Mountains", 4);
+            } break;
+            case GAME_LEVEL_SNOW: {
+                tex = TEX_ENV_NIGHT_SKY;
+                amount = 4;
+                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Forest", 4);
+            } break;
+            }
+            Vector2 position = {
+                .x = state->game_center_x + (state->game_width / 4),
+                .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
+            };
+            for (int i = 0; i < amount; i++) {
+                tex_atlas_draw_raw(state, tex + i, position, 0, 0.6f);
+            }
+            sprintf(buffer, "Upcoming birds: %i", state->level_bird_amount);
+            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 5);
+            sprintf(buffer, "Bird frequency: %.2f/sec", state->level_bird_rate);
+            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 6);
+        } break;
+        case 2: {
+
+        } break;
+        case 3: {
+
+        } break;
+        case 4: {
+
+        } break;
+        case 5: {
+
+        } break;
+        case 6: {
+
+        } break;
         }
-        if (state->player.multiplier_amounts[player_max_multiplier_idx] > 0) {
-            line_idx++;
-            sprintf(buffer, "Obliterations: %i", state->player.multiplier_amounts[player_max_multiplier_idx]);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, line_idx);
-        }
-    } break;
-    case 1: {
-    } break;
-    case 2: {
-
-    } break;
-    case 3: {
-
-    } break;
-    case 4: {
-
-    } break;
-    case 5: {
-
-    } break;
-    case 6: {
-
-    } break;
+        bird_computer->sub_option_count = sub_option_idx + 1 + bird_computer->sub_option_area_offset;
     }
 
     // cursor
@@ -241,9 +363,9 @@ void bird_computer_render(State *state) {
         position.x = state->game_center_x + dimensions.x_fract;
         position.y = state->game_top
             + dimensions.header_size
-            + (dimensions.line_size * bird_computer->option_idx)
+            + (dimensions.line_size * bird_computer->sub_option_idx)
             + (dimensions.line_size / 2);
     } break;
     }
-    tex_atlas_draw_raw(state, TEX_BIRD_EYE, position, 0.0f);
+    tex_atlas_draw_raw(state, TEX_BIRD_EYE, position, 0.0f, 1.0f);
 }

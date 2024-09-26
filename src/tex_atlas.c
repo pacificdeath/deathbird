@@ -52,14 +52,14 @@ void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, uns
     DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, (Color){ 255, 255, 255, opacity});
 }
 
-void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation) {
+void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale) {
     Rectangle source = {
         .x = state->tex_atlas_offsets[tex].x,
         .y = state->tex_atlas_offsets[tex].y,
         .width = state->tex_atlas_offsets[tex].size,
         .height = state->tex_atlas_offsets[tex].size,
     };
-    int render_scale = state->tex_atlas_offsets[tex].size * state->scale_multiplier;
+    int render_scale = state->tex_atlas_offsets[tex].size * state->scale_multiplier * scale;
     Rectangle dest = {
         .x = position.x,
         .y = position.y,

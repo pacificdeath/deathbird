@@ -23,7 +23,9 @@ static void handle_score(State *state) {
 
 void player_level_setup(State *state) {
     state->player.level_score = 0;
-    state->player.obliterated_birds = 0;
+    for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
+        state->player.obliterated_birds[i] = 0;
+    }
     state->player.bird_multiplier = 0;
     state->player.bird_multiplier_timer = PLAYER_MULTIPLIER_DISPLAY_TIME;
     for (int i = 0; i < PLAYER_MULTIPLIER_MAX - 1; i++) {
@@ -58,8 +60,7 @@ void player_update(State *state) {
     } else if (!IsKeyDown(KEY_RIGHT) && player->current_input_key == KEY_RIGHT) {
         player->current_input_key = 0;
     }
-    switch (player->current_input_key)
-    {
+    switch (player->current_input_key) {
     case KEY_LEFT:
         player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
         break;
@@ -74,12 +75,11 @@ void player_update(State *state) {
         float x_distance = fabs(player->position.x - birds[i].position.x);
         float y_distance = fabs(player->position.y - birds[i].position.y);
         if (x_distance < birds[i].collision_radius && y_distance < birds[i].collision_radius) {
-            dbgi(0);
             birds[i].health -= player->damage;
             if (birds[i].health <= 0) {
                 state->player.level_score++;
                 state->player.bird_multiplier++;
-                player->obliterated_birds++;
+                player->obliterated_birds[birds[i].type]++;
                 birds[i].state = BIRD_STATE_DYING;
                 Vector2 direction = vec2_normalized(
                     birds[i].position.x - player->position.x,
@@ -110,8 +110,8 @@ void player_update(State *state) {
     }
 }
 
-void player_level_end_cleanup(State *state) {
-    handle_score(state);
+bool player_ready_for_exit(State *state) {
+    return state->player.bird_multiplier == 0 && !should_display_multiplier(state);
 }
 
 void player_render(State *state) {

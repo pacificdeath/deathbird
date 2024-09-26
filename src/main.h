@@ -48,7 +48,7 @@
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 // def bird
-#define BIRD_CAPACITY 8
+#define BIRD_CAPACITY 10
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
 #define BIRD_DEATH_GORE_PARTS 8
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
@@ -152,7 +152,7 @@ typedef enum Bird_Computer_State {
 typedef enum Bird_Computer_Option {
     BIRD_COMPUTER_OPTION_RESULTS,
     BIRD_COMPUTER_OPTION_CONTINUE,
-    BIRD_COMPUTER_OPTION_3,
+    BIRD_COMPUTER_OPTION_SHOP,
     BIRD_COMPUTER_OPTION_4,
     BIRD_COMPUTER_OPTION_5,
     BIRD_COMPUTER_OPTION_6,
@@ -170,6 +170,7 @@ typedef enum Bird_Type {
     BIRD_TYPE_GIANT,
     BIRD_TYPE_YELLOW,
     BIRD_TYPE_BROWN,
+    BIRD_TYPES_TOTAL,
 } Bird_Type;
 
 typedef enum Bird_State {
@@ -225,7 +226,7 @@ typedef struct Player {
     int anim_step;
     float anim_time;
     int level_score;
-    int obliterated_birds;
+    Bird_Type obliterated_birds[BIRD_TYPES_TOTAL];
     int bird_multiplier;
     int bird_multiplier_display;
     float bird_multiplier_timer;
