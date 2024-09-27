@@ -1,9 +1,9 @@
-#include "stdlib.h"
-#include "math.h"
+#include <stdlib.h>
+#include <math.h>
 #include "raylib.h"
 #include "main.h"
 #include "tex_atlas.c"
-#include "scroll_env.c"
+#include "level.c"
 #include "player.c"
 #include "bird.c"
 #include "bird_computer.c"
@@ -100,9 +100,9 @@ int main(void) {
     }
 
     tex_atlas_init(state);
+    level_setup_next(state);
     bird_computer_init(state);
-
-    state->player.damage = 10;
+    bird_computer_level_setup(state);
 
     int skip_frame = 0;
     while (!WindowShouldClose()) {
@@ -128,39 +128,26 @@ int main(void) {
         }
 
         switch (state->game_state) {
+        case GAME_STATE_BIRD_COMPUTER: {
+            bird_computer_update(state);
+        } break;
         case GAME_STATE_NEXT_LEVEL: {
-            state->player.position.x = 0.0f;
-            state->player.position.y = 1.0f;
-            state->level_bird_amount = 2;
-            state->level_requested_birds = 0;
-            state->level_spawned_birds = 0;
-            state->level_passed_birds = 0;
-            state->level_bird_rate = 1.0f;
-            state->level_bird_timer = 0.0f;
-            switch (state->game_level) {
-            case GAME_LEVEL_NONE: state->game_level = GAME_LEVEL_FOREST; break;
-            case GAME_LEVEL_FOREST: state->game_level = GAME_LEVEL_FIELD; break;
-            case GAME_LEVEL_FIELD: state->game_level = GAME_LEVEL_SNOW; break;
-            case GAME_LEVEL_SNOW: state->game_level = GAME_LEVEL_FOREST; break;
-            }
-            scroll_env_level_setup(state);
+            level_go_to_next(state);
             player_level_setup(state);
             bird_level_setup(state);
             state->game_state = GAME_STATE_DEATHBIRD;
         } break;
         case GAME_STATE_DEATHBIRD: {
-            scroll_env_update(state);
+            level_update(state);
             // player must be updated before birds because it can change the
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
             if (birds_ready_for_exit(state) && player_ready_for_exit(state)) {
+                level_setup_next(state);
                 bird_computer_level_setup(state);
                 state->game_state = GAME_STATE_BIRD_COMPUTER;
             }
-        } break;
-        case GAME_STATE_BIRD_COMPUTER: {
-            bird_computer_update(state);
         } break;
         }
 
@@ -172,7 +159,7 @@ int main(void) {
         case GAME_STATE_NEXT_LEVEL:
             continue;
         case GAME_STATE_DEATHBIRD: {
-            scroll_env_render(state);
+            level_render(state);
             birds_render(state);
             player_render(state);
         } break;

@@ -1,5 +1,5 @@
+#include <stdio.h>
 #include "raylib.h"
-#include "stdio.h"
 #include "main.h"
 
 static bool should_display_multiplier(State *state) {
@@ -22,6 +22,9 @@ static void handle_score(State *state) {
 }
 
 void player_level_setup(State *state) {
+    state->player.damage = 10;
+    state->player.position.x = 0.0f;
+    state->player.position.y = 1.0f;
     state->player.level_score = 0;
     for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
         state->player.obliterated_birds[i] = 0;
@@ -116,7 +119,7 @@ bool player_ready_for_exit(State *state) {
 
 void player_render(State *state) {
     char buffer[16];
-    sprintf(buffer, " Score: %i ", state->player.level_score);
+    sprintf(buffer, " Round: %i Score: %i ", state->current_round, state->player.level_score);
     int font_size = (BIRD_COMPUTER_FONT_SIZE / state->bird_computer.font.baseSize) * state->scale_multiplier;
     Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
     Vector2 position = { .x = state->game_left, .y = state->game_top };
@@ -124,9 +127,9 @@ void player_render(State *state) {
     DrawTextPro(state->bird_computer.font, buffer, position, (Vector2) { 0, 0 }, 0, font_size, 0, WHITE);
     if (should_display_multiplier(state)) {
         if (state->player.bird_multiplier_display >= PLAYER_MULTIPLIER_MAX) {
-            sprintf(buffer, " Obliteration (%ix) ", state->player.bird_multiplier_display);
+            sprintf(buffer, " Max-Multiplier (%ix) ", state->player.bird_multiplier_display);
         } else {
-            sprintf(buffer, " %ix Multiplier ", state->player.bird_multiplier_display);
+            sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
         }
         Vector2 multiplier_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
         position.x = state->game_left + score_text_dimensions.x;

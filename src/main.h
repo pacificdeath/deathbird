@@ -8,6 +8,16 @@
 #define GAME_HEIGHT_RATIO 2.0f
 #define GAME_MIN_SIZE 2
 
+#define LEVEL_BASE_BIRD_TOTAL 10
+#define LEVEL_MIN_RANDOM_BIRD_AMOUNT 0
+#define LEVEL_MAX_RANDOM_BIRD_AMOUNT 10
+#define LEVEL_BIRD_AMOUNT_MULTIPLIER 5
+#define LEVEL_MIN_BIRD_FREQUENCY 0.1f
+#define LEVEL_MAX_BIRD_FREQUENCY 0.7f
+#define LEVELS_BEFORE_MIN_FREQUENCY (7)
+#define LEVEL_MIN_RANDOM_BIRD_FREQUENCY 0.0f
+#define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
+
 #define PLAYER_ANIM_TEX_AMOUNT 1
 #define DEATH_SOUND_AMOUNT 8
 
@@ -48,7 +58,7 @@
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 // def bird
-#define BIRD_CAPACITY 10
+#define BIRD_CAPACITY 32
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
 #define BIRD_DEATH_GORE_PARTS 8
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
@@ -79,17 +89,17 @@
 #define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
 
 typedef enum Game_State {
-    GAME_STATE_NEXT_LEVEL = 0,
+    GAME_STATE_BIRD_COMPUTER = 0,
+    GAME_STATE_NEXT_LEVEL,
     GAME_STATE_DEATHBIRD,
-    GAME_STATE_BIRD_COMPUTER,
 } Game_State;
 
-typedef enum Game_Level {
-    GAME_LEVEL_NONE = 0,
-    GAME_LEVEL_FOREST,
-    GAME_LEVEL_FIELD,
-    GAME_LEVEL_SNOW,
-} Game_Level;
+typedef enum Level_Environment {
+    LEVEL_ENVIRONMENT_NONE = 0,
+    LEVEL_ENVIRONMENT_FOREST,
+    LEVEL_ENVIRONMENT_MEADOWS,
+    LEVEL_ENVIRONMENT_MOUNTAINS,
+} Level_Environment;
 
 typedef enum Tex {
     TEX_ENV_NIGHT_SKY,
@@ -98,7 +108,7 @@ typedef enum Tex {
     TEX_ENV_TREES,
     TEX_ENV_DAY_SKY,
     TEX_ENV_CLOUDS,
-    TEX_ENV_FIELD,
+    TEX_ENV_MEADOWS,
     TEX_ENV_FENCE,
     TEX_ENV_WINTER_SKY,
     TEX_ENV_MOUNTAINS,
@@ -149,16 +159,6 @@ typedef enum Bird_Computer_State {
     BIRD_COMPUTER_STATE_SUB_OPTIONS,
 } Bird_Computer_State;
 
-typedef enum Bird_Computer_Option {
-    BIRD_COMPUTER_OPTION_RESULTS,
-    BIRD_COMPUTER_OPTION_CONTINUE,
-    BIRD_COMPUTER_OPTION_SHOP,
-    BIRD_COMPUTER_OPTION_4,
-    BIRD_COMPUTER_OPTION_5,
-    BIRD_COMPUTER_OPTION_6,
-    BIRD_COMPUTER_OPTION_7,
-} Bird_Computer_Option;
-
 typedef enum Bird_Computer_Text_Type {
     BIRD_COMPUTER_TEXT_TYPE_HEADER,
     BIRD_COMPUTER_TEXT_TYPE_OPTION,
@@ -205,6 +205,9 @@ typedef struct Bird_Computer {
     int sub_option_idx;
     int sub_option_count;
     int sub_option_area_offset;
+    int option_idx_results;
+    int option_idx_continue;
+    int option_idx_shop;
 } Bird_Computer;
 
 typedef struct Scroll_Env {
@@ -250,12 +253,22 @@ typedef struct Bird {
     int blood_idx;
 } Bird;
 
+typedef struct Level_Data {
+    Level_Environment environment;
+    int scroll_env_amount;
+    int total_birds;
+    float bird_frequency;
+    float bird_timer;
+    int requested_birds;
+    int spawned_birds;
+    int passed_birds;
+} Level_Data;
+
 typedef struct State {
     int screen_width;
     int screen_height;
 
     Game_State game_state;
-    Game_Level game_level;
     int game_width;
     int game_height;
     int game_left;
@@ -265,6 +278,11 @@ typedef struct State {
     int game_center_x;
     int game_center_y;
 
+    int current_round;
+    Level_Data current_level_data;
+    Level_Data next_level_data;
+    Scroll_Env scroll_envs[SCROLL_ENV_CAPACITY];
+
     Bird_Computer bird_computer;
 
     Texture tex_atlas;
@@ -272,27 +290,19 @@ typedef struct State {
 
     Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
 
-    Scroll_Env scroll_envs[SCROLL_ENV_CAPACITY];
-
     Player player;
 
     Bird birds[BIRD_CAPACITY];
     int birds_in_use;
-    int level_requested_birds;
-    int level_spawned_birds;
-    int level_bird_amount;
-    int level_passed_birds;
-    float level_bird_rate;
-    float level_bird_timer;
+
     float scale_multiplier;
     float delta_time;
-    int scroll_env_amount;
 } State;
 
 float randf(float min, float max);
 Vector2 vec2_normalized(float x, float y);
 void tex_atlas_init(State *state);
 void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity);
-void scroll_env_render(State *state);
+void level_render(State *state);
 
 #endif // MAIN_H

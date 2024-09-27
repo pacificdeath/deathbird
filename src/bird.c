@@ -4,7 +4,7 @@
 static void set_bird_available(State *state, Bird *bird) {
     bird->state = BIRD_STATE_AVAILABLE;
     state->birds_in_use--;
-    state->level_passed_birds++;
+    state->current_level_data.passed_birds++;
 }
 
 void bird_level_setup(State *state) {
@@ -16,39 +16,43 @@ void bird_level_setup(State *state) {
 
 void birds_update(State *state) {
     Bird *birds = state->birds;
-    if (state->level_requested_birds < state->level_bird_amount) {
-        if (state->level_bird_timer < state->level_bird_rate) {
-            state->level_bird_timer += state->delta_time;
+    if (state->current_level_data.requested_birds < state->current_level_data.total_birds) {
+        if (state->current_level_data.bird_timer < state->current_level_data.bird_frequency) {
+            state->current_level_data.bird_timer += state->delta_time;
         } else {
-            state->level_bird_timer = 0.0f;
-            state->level_requested_birds++;
+            state->current_level_data.bird_timer = 0.0f;
+            state->current_level_data.requested_birds++;
         }
     }
     for (int i = 0; i < BIRD_CAPACITY; i++) {
         switch (birds[i].state) {
         case BIRD_STATE_AVAILABLE: {
-            bool we_need_this_bird = state->level_spawned_birds < state->level_requested_birds;
+            bool we_need_this_bird = state->current_level_data.spawned_birds < state->current_level_data.requested_birds;
             if (!we_need_this_bird) {
                 break;
             }
             state->birds_in_use++;
-            state->level_spawned_birds++;
+            state->current_level_data.spawned_birds++;
             birds[i].position.x = BIRD_RESET_RIGHT;
             birds[i].position.y = randf(-BIRD_VERTICAL_FREEDOM, BIRD_VERTICAL_FREEDOM);
             birds[i].move_speed = randf(BIRD_MIN_MOVE_SPEED, BIRD_MAX_MOVE_SPEED);
-            switch (state->game_level)
-            {
-            case GAME_LEVEL_FOREST: {
-                birds[i].type = BIRD_TYPE_WHITE;
-                birds[i].health = 10;
+            switch (state->current_level_data.environment) {
+            case LEVEL_ENVIRONMENT_NONE: {
+                birds[i].type = BIRD_TYPE_GIANT;
+                birds[i].health = 1000;
                 birds[i].collision_radius = 0.2f;
             } break;
-            case GAME_LEVEL_FIELD: {
+            case LEVEL_ENVIRONMENT_FOREST: {
+                birds[i].type = BIRD_TYPE_WHITE;
+                birds[i].health = 10;
+                birds[i].collision_radius = 0.1f;
+            } break;
+            case LEVEL_ENVIRONMENT_MEADOWS: {
                 birds[i].type = BIRD_TYPE_YELLOW;
                 birds[i].health = 10;
                 birds[i].collision_radius = 0.1f;
             } break;
-            case GAME_LEVEL_SNOW: {
+            case LEVEL_ENVIRONMENT_MOUNTAINS: {
                 birds[i].type = BIRD_TYPE_BROWN;
                 birds[i].health = 10;
                 birds[i].collision_radius = 0.1f;
@@ -125,7 +129,7 @@ void birds_update(State *state) {
 }
 
 bool birds_ready_for_exit(State *state) {
-    return state->level_passed_birds == state->level_bird_amount;
+    return state->current_level_data.passed_birds == state->current_level_data.total_birds;
 }
 
 void birds_render(State *state) {

@@ -1,5 +1,5 @@
+#include <stdio.h>
 #include "raylib.h"
-#include "stdio.h"
 #include "main.h"
 
 static void draw_text(
@@ -58,6 +58,7 @@ static void draw_scroll_bar(
         .height = full_size
     };
     switch (type) {
+    case BIRD_COMPUTER_TEXT_TYPE_HEADER: break;
     case BIRD_COMPUTER_TEXT_TYPE_OPTION: {
         rec.x = state->game_center_x - (dimensions->x_fract);
     } break;
@@ -86,10 +87,22 @@ void bird_computer_cleanup(State *state) {
 }
 
 void bird_computer_level_setup(State *state) {
-    state->bird_computer.option_idx = 0;
-    state->bird_computer.option_area_offset = 0;
-    state->bird_computer.sub_option_idx = 0;
-    state->bird_computer.sub_option_area_offset = 0;
+    Bird_Computer *bird_computer = &state->bird_computer;
+    bird_computer->option_idx = 0;
+    bird_computer->option_area_offset = 0;
+    bird_computer->sub_option_idx = 0;
+    bird_computer->sub_option_area_offset = 0;
+    if (state->current_round == 0) {
+        bird_computer->option_idx_results = -1;
+        bird_computer->option_idx_continue = 0;
+        bird_computer->option_idx_shop = -1;
+        bird_computer->option_count = 1;
+    } else {
+        bird_computer->option_idx_results = 0;
+        bird_computer->option_idx_continue = 1;
+        bird_computer->option_idx_shop = 2;
+        bird_computer->option_count = 3;
+    }
 }
 
 void bird_computer_update(State *state) {
@@ -126,15 +139,12 @@ void bird_computer_update(State *state) {
     switch (bird_computer->state) {
     case BIRD_COMPUTER_STATE_OPTIONS: {
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-            switch (bird_computer->option_idx + bird_computer->option_area_offset) {
-            case BIRD_COMPUTER_OPTION_RESULTS: {
+            int option_idx_with_offset = bird_computer->option_idx + bird_computer->option_area_offset;
+            if (option_idx_with_offset == bird_computer->option_idx_results) {
                 bird_computer->state = BIRD_COMPUTER_STATE_SUB_OPTIONS;
-            } break;
-            case BIRD_COMPUTER_OPTION_CONTINUE: {
+            } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
                 state->game_state = GAME_STATE_NEXT_LEVEL;
-            } break;
             }
-            break;
         }
     } break;
     case BIRD_COMPUTER_STATE_SUB_OPTIONS: {
@@ -199,154 +209,150 @@ void bird_computer_render(State *state) {
 
     // options
     {
-        int option_idx = -bird_computer->option_area_offset;
-        switch (state->game_level)
-        {
-        case GAME_LEVEL_FOREST: {
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Death forest results", option_idx);
-            option_idx++;
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Death field", option_idx);
-        } break;
-        case GAME_LEVEL_FIELD: {
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Death field results", option_idx);
-            option_idx++;
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Death mountain", option_idx);
-        } break;
-        case GAME_LEVEL_SNOW: {
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Death mountain results", option_idx);
-            option_idx++;
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Death forest", option_idx);
-        } break;
-        }
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Nothing", option_idx);
-        option_idx++;
-        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Finale!", option_idx);
-        bird_computer->option_count = option_idx + 1 + bird_computer->option_area_offset;
-    }
-
-    // sub options
-    {
-        char buffer[32];
-        int sub_option_idx = -bird_computer->sub_option_area_offset;
-        switch (bird_computer->option_idx + bird_computer->option_area_offset) {
-        case BIRD_COMPUTER_OPTION_RESULTS: {
-            sprintf(buffer, "Level score: %i", state->player.level_score);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            sub_option_idx++;
-            for (int i = 0; i < 14; i++) {
-                sprintf(buffer, "death: %i", state->player.level_score);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-                sub_option_idx++;
-            }
-            int obliterated_birds_total = 0;
-            for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
-                obliterated_birds_total += state->player.obliterated_birds[i];
-            }
-            sprintf(buffer, "Birds obliterated: %i/%i", obliterated_birds_total, state->level_bird_amount);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            int player_max_multiplier_idx = PLAYER_MULTIPLIER_MAX - PLAYER_SMALLEST_VALID_MULTIPLIER;
-            for (int i = 0; i < player_max_multiplier_idx - 1; i++) {
-                if (state->player.multiplier_amounts[i] == 0) {
-                    continue;
+        for (int option_idx = bird_computer->option_area_offset; option_idx < bird_computer->option_count; option_idx++) {
+            if (option_idx == bird_computer->option_idx_results) {
+                switch (state->current_level_data.environment) {
+                    case LEVEL_ENVIRONMENT_NONE: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Results from nothing", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_FOREST: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Forest round results", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MEADOWS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Meadows round results", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MOUNTAINS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Mountains round results", option_idx);
+                    } break;
                 }
-                sub_option_idx++;
-                int multiplier = i + PLAYER_SMALLEST_VALID_MULTIPLIER;
-                sprintf(buffer, "%ix Multipliers: %i (%i score)", i + PLAYER_SMALLEST_VALID_MULTIPLIER, state->player.multiplier_amounts[i], multiplier * multiplier);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-            dbgi(player_max_multiplier_idx);
-            if (state->player.multiplier_amounts[player_max_multiplier_idx] > 0) {
-                sub_option_idx++;
-                sprintf(buffer, "Obliterations: %i (100 score)", state->player.multiplier_amounts[player_max_multiplier_idx]);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-            if (state->player.obliterated_birds[BIRD_TYPE_WHITE] > 0) {
-                sub_option_idx++;
-                sprintf(buffer, "White birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_WHITE]);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-            if (state->player.obliterated_birds[BIRD_TYPE_GIANT] > 0) {
-                sub_option_idx++;
-                sprintf(buffer, "Giant birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_GIANT]);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-            if (state->player.obliterated_birds[BIRD_TYPE_YELLOW] > 0) {
-                sub_option_idx++;
-                sprintf(buffer, "Yellow birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_YELLOW]);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-            if (state->player.obliterated_birds[BIRD_TYPE_BROWN] > 0) {
-                sub_option_idx++;
-                sprintf(buffer, "Brown birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_BROWN]);
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
-            }
-        } break;
-        case BIRD_COMPUTER_OPTION_CONTINUE: {
-            Tex tex;
-            int amount;
-            switch (state->game_level) {
-            case GAME_LEVEL_FOREST: {
-                tex = TEX_ENV_DAY_SKY;
-                amount = 4;
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Field", 4);
-            } break;
-            case GAME_LEVEL_FIELD: {
-                tex = TEX_ENV_WINTER_SKY;
-                amount = 4;
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Mountains", 4);
-            } break;
-            case GAME_LEVEL_SNOW: {
-                tex = TEX_ENV_NIGHT_SKY;
-                amount = 4;
-                draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Forest", 4);
-            } break;
-            }
-            Vector2 position = {
-                .x = state->game_center_x + (state->game_width / 4),
-                .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
-            };
-            for (int i = 0; i < amount; i++) {
-                tex_atlas_draw_raw(state, tex + i, position, 0, 0.6f);
-            }
-            sprintf(buffer, "Upcoming birds: %i", state->level_bird_amount);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 5);
-            sprintf(buffer, "Bird frequency: %.2f/sec", state->level_bird_rate);
-            draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 6);
-        } break;
-        case 2: {
 
-        } break;
-        case 3: {
+                if (option_idx == bird_computer->option_idx) {
+                    // sub options
+                    int sub_option_idx = -bird_computer->sub_option_area_offset;
+                    char buffer[32];
+                    sprintf(buffer, "Current round: %i", state->current_round);
+                    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                    sub_option_idx++;
+                    sprintf(buffer, "Round score: %i", state->player.level_score);
+                    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                    sub_option_idx++;
+                    int obliterated_birds_total = 0;
+                    for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
+                        obliterated_birds_total += state->player.obliterated_birds[i];
+                    }
+                    sprintf(buffer, "Birds obliterated: %i/%i", obliterated_birds_total, state->current_level_data.total_birds);
+                    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                    sub_option_idx++;
+                    int player_max_multiplier_idx = PLAYER_MULTIPLIER_MAX - PLAYER_SMALLEST_VALID_MULTIPLIER;
+                    for (int i = 0; i < player_max_multiplier_idx - 1; i++) {
+                        if (state->player.multiplier_amounts[i] == 0) {
+                            continue;
+                        }
+                        int multiplier_amount = state->player.multiplier_amounts[i];
+                        sprintf(buffer, "%ix-Multipliers: %i", i + PLAYER_SMALLEST_VALID_MULTIPLIER, multiplier_amount);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    if (state->player.multiplier_amounts[player_max_multiplier_idx] > 0) {
+                        sprintf(buffer, "Max-Multipliers: %i", state->player.multiplier_amounts[player_max_multiplier_idx]);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    if (state->player.obliterated_birds[BIRD_TYPE_WHITE] > 0) {
+                        sprintf(buffer, "White birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_WHITE]);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    if (state->player.obliterated_birds[BIRD_TYPE_GIANT] > 0) {
+                        sprintf(buffer, "Giant birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_GIANT]);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    if (state->player.obliterated_birds[BIRD_TYPE_YELLOW] > 0) {
+                        sprintf(buffer, "Yellow birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_YELLOW]);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    if (state->player.obliterated_birds[BIRD_TYPE_BROWN] > 0) {
+                        sprintf(buffer, "Brown birds destroyed: %i", state->player.obliterated_birds[BIRD_TYPE_BROWN]);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    for (int i = 0; i < 14; i++) {
+                        sprintf(buffer, "death: %i", state->player.level_score);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
+                        sub_option_idx++;
+                    }
+                    bird_computer->sub_option_count = sub_option_idx;
+                }
+            } else if (option_idx == bird_computer->option_idx_continue) {
+                switch (state->next_level_data.environment) {
+                    case LEVEL_ENVIRONMENT_NONE: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to nothing?", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_FOREST: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Forest", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MEADOWS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Meadows", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MOUNTAINS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "Continue to Mountains", option_idx);
+                    } break;
+                }
 
-        } break;
-        case 4: {
+                if (option_idx == bird_computer->option_idx) {
+                    // sub options
+                    char buffer[32];
+                    Tex tex;
+                    switch (state->next_level_data.environment) {
+                    case LEVEL_ENVIRONMENT_NONE: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Nothing", 4);
+                    }
+                    case LEVEL_ENVIRONMENT_FOREST: {
+                        tex = TEX_ENV_NIGHT_SKY;
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Forest", 4);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MEADOWS: {
+                        tex = TEX_ENV_DAY_SKY;
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Meadows", 4);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MOUNTAINS: {
+                        tex = TEX_ENV_WINTER_SKY;
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, "Mountains", 4);
+                    } break;
+                    }
+                    Vector2 position = {
+                        .x = state->game_center_x + (state->game_width / 4),
+                        .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
+                    };
+                    for (int i = 0; i < state->next_level_data.scroll_env_amount; i++) {
+                        tex_atlas_draw_raw(state, tex + i, position, 0, 0.6f);
+                    }
+                    sprintf(buffer, "Upcoming birds: %i", state->next_level_data.total_birds);
+                    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 5);
+                    sprintf(buffer, "Bird frequency: %.2f/sec", state->next_level_data.bird_frequency);
+                    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, 6);
 
-        } break;
-        case 5: {
-
-        } break;
-        case 6: {
-
-        } break;
+                    bird_computer->sub_option_count = 0;
+                }
+            } else if (option_idx == bird_computer->option_idx_shop) {
+                switch (state->current_level_data.environment) {
+                    case LEVEL_ENVIRONMENT_NONE: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The empty shop", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_FOREST: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Forest shop", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MEADOWS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Meadow shop", option_idx);
+                    } break;
+                    case LEVEL_ENVIRONMENT_MOUNTAINS: {
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Mountain shop", option_idx);
+                    } break;
+                }
+            }
         }
-        bird_computer->sub_option_count = sub_option_idx + 1 + bird_computer->sub_option_area_offset;
     }
 
     // cursor
