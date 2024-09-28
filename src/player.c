@@ -15,13 +15,15 @@ static void handle_score(State *state) {
     if (multiplier >= PLAYER_MULTIPLIER_MAX) {
         multiplier = PLAYER_MULTIPLIER_MAX;
     }
-    state->player.multiplier_amounts[multiplier - PLAYER_SMALLEST_VALID_MULTIPLIER]++;
+    int multiplier_amount_idx = multiplier - PLAYER_SMALLEST_VALID_MULTIPLIER;
+    state->player.multiplier_amounts[multiplier_amount_idx]++;
     state->player.level_score += (multiplier * multiplier) - multiplier;
     state->player.bird_multiplier_display = multiplier;
     state->player.bird_multiplier_timer = 0.0f;
 }
 
 void player_level_setup(State *state) {
+    state->player.velocity = 0.0f;
     state->player.damage = 10;
     state->player.position.x = 0.0f;
     state->player.position.y = 1.0f;
@@ -47,8 +49,7 @@ void player_update(State *state) {
         player->velocity *= -1;
         player->velocity *= PLAYER_GROUND_LOSS;
         handle_score(state);
-    }
-    if (player->position.y > CEILING_Y) {
+    } else if (player->position.y > CEILING_Y) {
         player->position.y = CEILING_Y;
         player->velocity *= -1;
         handle_score(state);
@@ -107,9 +108,6 @@ void player_update(State *state) {
     }
     if (should_display_multiplier(state)) {
         state->player.bird_multiplier_timer += state->delta_time;
-        if (!should_display_multiplier(state)) {
-            state->player.bird_multiplier = 0;
-        }
     }
 }
 
@@ -127,7 +125,7 @@ void player_render(State *state) {
     DrawTextPro(state->bird_computer.font, buffer, position, (Vector2) { 0, 0 }, 0, font_size, 0, WHITE);
     if (should_display_multiplier(state)) {
         if (state->player.bird_multiplier_display >= PLAYER_MULTIPLIER_MAX) {
-            sprintf(buffer, " Max-Multiplier (%ix) ", state->player.bird_multiplier_display);
+            sprintf(buffer, " Max-Multiplier ");
         } else {
             sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
         }

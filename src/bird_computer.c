@@ -22,14 +22,32 @@ static void draw_text(
         position.y = state->game_top;
     } break;
     case BIRD_COMPUTER_TEXT_TYPE_OPTION:
-    case BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION: {
+    case BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION:
+    case BIRD_COMPUTER_TEXT_TYPE_CURSOR: {
+        switch (text_type) {
+        case BIRD_COMPUTER_TEXT_TYPE_OPTION: {
+            position.x = state->game_left + (dimensions->x_fract * 2);
+        } break;
+        case BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION: {
+            position.x = state->game_center_x + (dimensions->x_fract * 2);
+        } break;
+        case BIRD_COMPUTER_TEXT_TYPE_CURSOR: {
+            switch (state->bird_computer.state) {
+            case BIRD_COMPUTER_STATE_OPTIONS: {
+                position.x = state->game_left + dimensions->x_fract;
+                line_idx = state->bird_computer.option_idx;
+            } break;
+            case BIRD_COMPUTER_STATE_SUB_OPTIONS: {
+                position.x = state->game_center_x + dimensions->x_fract;
+                line_idx = state->bird_computer.sub_option_idx;
+            } break;
+            }
+        } break;
+        default:
+            break;
+        }
         text_origin = (Vector2){ 0, -(dimensions->line_size / 2.0f) + (text_dimensions.y / 2.0f) };
         position.y = state->game_top + dimensions->header_size + (dimensions->line_size * line_idx);
-        if (text_type == BIRD_COMPUTER_TEXT_TYPE_OPTION) {
-            position.x = state->game_left + (dimensions->x_fract * 2);
-        } else {
-            position.x = state->game_center_x + (dimensions->x_fract * 2);
-        }
     } break;
     }
     DrawTextPro(
@@ -58,13 +76,14 @@ static void draw_scroll_bar(
         .height = full_size
     };
     switch (type) {
-    case BIRD_COMPUTER_TEXT_TYPE_HEADER: break;
     case BIRD_COMPUTER_TEXT_TYPE_OPTION: {
         rec.x = state->game_center_x - (dimensions->x_fract);
     } break;
     case BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION: {
         rec.x = state->game_right - (dimensions->x_fract);
     } break;
+    default
+        :break;
     }
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
     float scroll_bar_fract = full_size / item_count;
@@ -138,11 +157,15 @@ void bird_computer_update(State *state) {
     }
     switch (bird_computer->state) {
     case BIRD_COMPUTER_STATE_OPTIONS: {
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_RIGHT)) {
             int option_idx_with_offset = bird_computer->option_idx + bird_computer->option_area_offset;
             if (option_idx_with_offset == bird_computer->option_idx_results) {
                 bird_computer->state = BIRD_COMPUTER_STATE_SUB_OPTIONS;
-            } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
+            }
+        }
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            int option_idx_with_offset = bird_computer->option_idx + bird_computer->option_area_offset;
+            if (option_idx_with_offset == bird_computer->option_idx_continue) {
                 state->game_state = GAME_STATE_NEXT_LEVEL;
             }
         }
@@ -182,6 +205,33 @@ void bird_computer_render(State *state) {
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
     rec.x = state->game_left + (state->game_width / 2);
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
+    {
+        // cursor background
+        float left_padding = (dimensions.x_fract * 1.7);
+        float vertical_padding = 0.3f * dimensions.y_fract;
+        Vector2 position = {
+            .x = state->game_left + left_padding,
+            .y = state->game_top
+                + dimensions.header_size
+                + (dimensions.line_size * bird_computer->option_idx)
+                + vertical_padding
+        };
+        Vector2 size = {
+            .x = (state->game_width / 2) - left_padding - (dimensions.x_fract * 2),
+            .y = dimensions.line_size - (vertical_padding * 2)
+        };
+        DrawRectangleV(position, size, BIRD_COMPUTER_CURSOR_BG_COLOR);
+
+        if (bird_computer->state == BIRD_COMPUTER_STATE_SUB_OPTIONS) {
+            // sub option cursor background
+            position.x += (state->game_width / 2);
+            position.y = state->game_top
+                + dimensions.header_size
+                + (dimensions.line_size * bird_computer->sub_option_idx)
+                + vertical_padding;
+            DrawRectangleV(position, size, BIRD_COMPUTER_CURSOR_BG_COLOR);
+        }
+    }
 
     if (bird_computer->option_count > BIRD_COMPUTER_LINE_COUNT) {
         draw_scroll_bar(
@@ -205,7 +255,13 @@ void bird_computer_render(State *state) {
     }
 
     // header
-    draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_HEADER, "Welcome to the bird computer", 0);
+    draw_text(
+        state,
+        &dimensions,
+        BIRD_COMPUTER_TEXT_TYPE_HEADER,
+        "Welcome to the bird computer",
+        0 // param not relevant for header
+    );
 
     // options
     {
@@ -278,12 +334,12 @@ void bird_computer_render(State *state) {
                         draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
                         sub_option_idx++;
                     }
-                    for (int i = 0; i < 14; i++) {
-                        sprintf(buffer, "death: %i", state->player.level_score);
+                    for (int i = 0; i < 20; i++) {
+                        sprintf(buffer, "death: %i", i);
                         draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION, buffer, sub_option_idx);
                         sub_option_idx++;
                     }
-                    bird_computer->sub_option_count = sub_option_idx;
+                    bird_computer->sub_option_count = sub_option_idx + bird_computer->sub_option_area_offset;
                 }
             } else if (option_idx == bird_computer->option_idx_continue) {
                 switch (state->next_level_data.environment) {
@@ -342,13 +398,13 @@ void bird_computer_render(State *state) {
                         draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The empty shop", option_idx);
                     } break;
                     case LEVEL_ENVIRONMENT_FOREST: {
-                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Forest shop", option_idx);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Forest Shop", option_idx);
                     } break;
                     case LEVEL_ENVIRONMENT_MEADOWS: {
-                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Meadow shop", option_idx);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Meadow Shop", option_idx);
                     } break;
                     case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Mountain shop", option_idx);
+                        draw_text(state, &dimensions, BIRD_COMPUTER_TEXT_TYPE_OPTION, "The Mountain Shop", option_idx);
                     } break;
                 }
             }
@@ -356,22 +412,11 @@ void bird_computer_render(State *state) {
     }
 
     // cursor
-    Vector2 position;
-    switch (bird_computer->state) {
-    case BIRD_COMPUTER_STATE_OPTIONS: {
-        position.x = state->game_left + dimensions.x_fract;
-        position.y = state->game_top
-            + dimensions.header_size
-            + (dimensions.line_size * bird_computer->option_idx)
-            + (dimensions.line_size / 2);
-    } break;
-    case BIRD_COMPUTER_STATE_SUB_OPTIONS: {
-        position.x = state->game_center_x + dimensions.x_fract;
-        position.y = state->game_top
-            + dimensions.header_size
-            + (dimensions.line_size * bird_computer->sub_option_idx)
-            + (dimensions.line_size / 2);
-    } break;
-    }
-    tex_atlas_draw_raw(state, TEX_BIRD_EYE, position, 0.0f, 1.0f);
+    draw_text(
+        state,
+        &dimensions,
+        BIRD_COMPUTER_TEXT_TYPE_CURSOR,
+        ">",
+        0 // param not relevant for cursor
+    );
 }
