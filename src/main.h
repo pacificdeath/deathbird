@@ -13,12 +13,12 @@
 #define LEVEL_MAX_RANDOM_BIRD_AMOUNT 10
 #define LEVEL_BIRD_AMOUNT_MULTIPLIER 5
 #define LEVEL_MIN_BIRD_FREQUENCY 0.1f
-#define LEVEL_MAX_BIRD_FREQUENCY 0.7f
+#define LEVEL_MAX_BIRD_FREQUENCY 0.3f
 #define LEVELS_BEFORE_MIN_FREQUENCY 31
 #define LEVEL_MIN_RANDOM_BIRD_FREQUENCY 0.0f
 #define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
 
-#define PLAYER_ANIM_TEX_AMOUNT 1
+#define PLAYER_ANIM_TEX_AMOUNT 6
 #define DEATH_SOUND_AMOUNT 8
 
 // def debug
@@ -35,7 +35,7 @@
 
 #define OPAQUE 255
 #define OUT_OF_BOUNDS_COLOR BLACK
-#define GROUND_Y -0.97f
+#define GROUND_Y -0.87f
 #define CEILING_Y 0.97f
 #define ENV_TEX_SIZE 128.0f
 
@@ -47,14 +47,11 @@
 #define SCROLL_ENV_CAPACITY 8
 
 // def player
-#define PLAYER_GRAVITY 3.0f
-#define PLAYER_GROUND_LOSS 0.8f
-#define PLAYER_BIRD_BOUNCE 3.0f
+#define PLAYER_VERTICAL_SPEED 2.0f
 #define PLAYER_HORIZONTAL_SPEED 2.0f
 #define PLAYER_ROTATION_SPEED 500.0f
-#define PLAYER_ANIM_SPEED 0.1f
+#define PLAYER_ROTATION_SPEED_FAST 2500.0f
 #define PLAYER_SMALLEST_VALID_MULTIPLIER 2
-#define PLAYER_MULTIPLIER_MAX 10
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 // def bird
@@ -79,15 +76,16 @@
 #define BIRD_VERTICAL_FREEDOM 0.8f
 
 // def bird computer
-#define BIRD_COMPUTER_FONT "bios.ttf"
-#define BIRD_COMPUTER_FONT_SIZE 250
+#define BIRD_COMPUTER_FONT "consolas.ttf"
+#define BIRD_COMPUTER_FONT_SIZE 350
 #define BIRD_COMPUTER_BG_COLOR (Color) { 0, 0, 192, 255 }
 #define BIRD_COMPUTER_CURSOR_BG_COLOR (Color) { 255, 0, 0, 255 }
 #define BIRD_COMPUTER_FG_COLOR (Color) { 255, 255, 255, 255 }
 #define BIRD_COMPUTER_TEXT_COLOR (Color) { 255, 255, 0, 255 }
 #define BIRD_COMPUTER_HEADER_SIZE 0.1
-#define BIRD_COMPUTER_LINE_COUNT 7
+#define BIRD_COMPUTER_LINE_COUNT 8
 #define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
+#define BIRD_COMPUTER_SHOP_MAX_ITEM_COUNT 16
 
 typedef enum Game_State {
     GAME_STATE_BIRD_COMPUTER = 0,
@@ -100,6 +98,7 @@ typedef enum Level_Environment {
     LEVEL_ENVIRONMENT_FOREST,
     LEVEL_ENVIRONMENT_MEADOWS,
     LEVEL_ENVIRONMENT_MOUNTAINS,
+    LEVEL_ENVIRONMENT_TOTAL,
 } Level_Environment;
 
 typedef enum Tex {
@@ -152,20 +151,26 @@ typedef enum Tex {
     TEX_BIRD_GORE_1,
     TEX_BIRD_GORE_2,
     TEX_PLAYER_1,
+    TEX_PLAYER_2,
     TEX_TOTAL,
 } Tex;
 
 typedef enum Bird_Computer_State {
-    BIRD_COMPUTER_STATE_OPTIONS,
-    BIRD_COMPUTER_STATE_SUB_OPTIONS,
+    BIRD_COMPUTER_STATE_DEFAULT,
+    BIRD_COMPUTER_STATE_SHOP,
+    BIRD_COMPUTER_STATE_INFO_BOX,
 } Bird_Computer_State;
 
-typedef enum Bird_Computer_Text_Type {
-    BIRD_COMPUTER_TEXT_TYPE_HEADER,
-    BIRD_COMPUTER_TEXT_TYPE_OPTION,
-    BIRD_COMPUTER_TEXT_TYPE_SUB_OPTION,
-    BIRD_COMPUTER_TEXT_TYPE_CURSOR,
-} Bird_Computer_Text_Type;
+typedef enum Shop_Item {
+    SHOP_ITEM_NONE = 0,
+    SHOP_ITEM_PLAYER_1,
+} Shop_Item;
+
+typedef enum Player_State {
+    PLAYER_STATE_GROUNDED,
+    PLAYER_STATE_UP,
+    PLAYER_STATE_DOWN,
+} Player_State;
 
 typedef enum Bird_Type {
     BIRD_TYPE_WHITE,
@@ -188,6 +193,12 @@ typedef struct Tex_Atlas_Offset {
     int size;
 } Tex_Atlas_Offset;
 
+typedef struct Shop {
+    Shop_Item items
+        [LEVEL_ENVIRONMENT_TOTAL]
+        [BIRD_COMPUTER_SHOP_MAX_ITEM_COUNT];
+} Shop;
+
 typedef struct Bird_Computer_Dimensions {
     float font_size;
     float x_fract;
@@ -201,15 +212,14 @@ typedef struct Bird_Computer_Dimensions {
 typedef struct Bird_Computer {
     Bird_Computer_State state;
     Font font;
+    Shop shop;
     int option_idx;
     int option_count;
     int option_area_offset;
-    int sub_option_idx;
-    int sub_option_count;
-    int sub_option_area_offset;
     int option_idx_results;
     int option_idx_continue;
     int option_idx_shop;
+    int option_idx_multipliers;
 } Bird_Computer;
 
 typedef struct Scroll_Env {
@@ -223,9 +233,9 @@ typedef struct Scroll_Env {
 } Scroll_Env;
 
 typedef struct Player {
+    Player_State state;
     Vector2 position;
     float rotation;
-    float velocity;
     int damage;
     int current_input_key;
     int anim_step;
@@ -235,7 +245,7 @@ typedef struct Player {
     int bird_multiplier;
     int bird_multiplier_display;
     float bird_multiplier_timer;
-    int multiplier_amounts[PLAYER_MULTIPLIER_MAX - 1]; // exclude 1x multiplier
+    int highest_multipliers[BIRD_COMPUTER_LINE_COUNT]; // exclude 1x multiplier
 } Player;
 
 typedef struct Bird {

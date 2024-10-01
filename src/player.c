@@ -7,53 +7,51 @@ static bool should_display_multiplier(State *state) {
 }
 
 static void handle_score(State *state) {
-    int multiplier = state->player.bird_multiplier;
-    state->player.bird_multiplier = 0;
+    Player *player = &state->player;
+    player->state = PLAYER_STATE_GROUNDED;
+    int multiplier = player->bird_multiplier;
+    player->bird_multiplier = 0;
     if (multiplier < PLAYER_SMALLEST_VALID_MULTIPLIER) {
         return;
     }
-    if (multiplier >= PLAYER_MULTIPLIER_MAX) {
-        multiplier = PLAYER_MULTIPLIER_MAX;
+    int last_place = BIRD_COMPUTER_LINE_COUNT - 1;
+    if (multiplier > player->highest_multipliers[last_place]) {
+        player->highest_multipliers[last_place] = multiplier;
+    } else {
+        return;
     }
-    int multiplier_amount_idx = multiplier - PLAYER_SMALLEST_VALID_MULTIPLIER;
-    state->player.multiplier_amounts[multiplier_amount_idx]++;
-    state->player.level_score += (multiplier * multiplier) - multiplier;
-    state->player.bird_multiplier_display = multiplier;
-    state->player.bird_multiplier_timer = 0.0f;
+    for (int i = last_place - 1; i >= 0; i--) {
+        if (multiplier > player->highest_multipliers[i]) {
+            player->highest_multipliers[i + 1] = player->highest_multipliers[i];
+            player->highest_multipliers[i] = multiplier;
+        }
+    }
+    player->level_score += (multiplier * multiplier) - multiplier;
+    player->bird_multiplier_display = multiplier;
+    player->bird_multiplier_timer = 0.0f;
 }
 
 void player_level_setup(State *state) {
-    state->player.velocity = 0.0f;
     state->player.damage = 10;
+    state->player.state = PLAYER_STATE_GROUNDED;
     state->player.position.x = 0.0f;
-    state->player.position.y = 1.0f;
+    state->player.position.y = GROUND_Y;
     state->player.level_score = 0;
     for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
         state->player.obliterated_birds[i] = 0;
     }
     state->player.bird_multiplier = 0;
     state->player.bird_multiplier_timer = PLAYER_MULTIPLIER_DISPLAY_TIME;
-    for (int i = 0; i < PLAYER_MULTIPLIER_MAX - 1; i++) {
-        state->player.multiplier_amounts[i] = 0;
+    for (int i = 0; i < BIRD_COMPUTER_LINE_COUNT - 1; i++) {
+        state->player.highest_multipliers[i] = 0;
     }
 }
 
 void player_update(State *state) {
+    bool down_arrow_hold = IsKeyDown(KEY_DOWN);
+    bool up_arrow_hold = IsKeyDown(KEY_UP);
     Player *player = &state->player;
     Bird *birds = state->birds;
-    player->rotation += PLAYER_ROTATION_SPEED * state->delta_time;
-    player->velocity += PLAYER_GRAVITY * state->delta_time;
-    player->position.y -= player->velocity * state->delta_time;
-    if (player->position.y < GROUND_Y) {
-        player->position.y = GROUND_Y;
-        player->velocity *= -1;
-        player->velocity *= PLAYER_GROUND_LOSS;
-        handle_score(state);
-    } else if (player->position.y > CEILING_Y) {
-        player->position.y = CEILING_Y;
-        player->velocity *= -1;
-        handle_score(state);
-    }
     if (IsKeyPressed(KEY_LEFT)) {
         player->current_input_key = KEY_LEFT;
     } else if (!IsKeyDown(KEY_LEFT) && player->current_input_key == KEY_LEFT) {
@@ -65,46 +63,65 @@ void player_update(State *state) {
         player->current_input_key = 0;
     }
     switch (player->current_input_key) {
-    case KEY_LEFT:
+    case KEY_LEFT: {
         player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
-        break;
-    case KEY_RIGHT:
+    } break;
+    case KEY_RIGHT: {
         player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
-        break;
+    } break;
     }
-    for (int i = 0; i < BIRD_CAPACITY; i++) {
-        if (birds[i].state != BIRD_STATE_ALIVE) {
-            continue;
+    if (player->state == PLAYER_STATE_GROUNDED) {
+        player->position.y = GROUND_Y;
+        if (up_arrow_hold) {
+            player->state = PLAYER_STATE_UP;
+        } else {
+            player->rotation += PLAYER_ROTATION_SPEED * state->delta_time;
         }
-        float x_distance = fabs(player->position.x - birds[i].position.x);
-        float y_distance = fabs(player->position.y - birds[i].position.y);
-        if (x_distance < birds[i].collision_radius && y_distance < birds[i].collision_radius) {
-            birds[i].health -= player->damage;
-            if (birds[i].health <= 0) {
-                state->player.level_score++;
-                state->player.bird_multiplier++;
-                player->obliterated_birds[birds[i].type]++;
-                birds[i].state = BIRD_STATE_DYING;
-                Vector2 direction = vec2_normalized(
-                    birds[i].position.x - player->position.x,
-                    birds[i].position.y - player->position.y
-                );
-                birds[i].death_master_velocity.x = direction.x * BIRD_DEATH_VELOCITY_MULTIPLIER;
-                birds[i].death_master_velocity.y = -direction.y * BIRD_DEATH_VELOCITY_MULTIPLIER;
+    } else {
+        int dir = player->state == PLAYER_STATE_UP ? 1 : -1;
+        player->position.y += dir * PLAYER_VERTICAL_SPEED * state->delta_time;
+        player->rotation += PLAYER_ROTATION_SPEED_FAST * state->delta_time;
+        if (player->position.y < GROUND_Y) {
+            player->position.y = GROUND_Y;
+            handle_score(state);
+            player->state = PLAYER_STATE_GROUNDED;
+        } else if (player->position.y > CEILING_Y) {
+            handle_score(state);
+            player->state = PLAYER_STATE_DOWN;
+        }
+        for (int i = 0; i < BIRD_CAPACITY; i++) {
+            if (birds[i].state != BIRD_STATE_ALIVE) {
+                continue;
             }
-            if (player->position.y < birds[i].position.y) {
-                player->position.y = birds[i].position.y - birds[i].collision_radius;
-                player->velocity = PLAYER_BIRD_BOUNCE;
-            } else {
-                player->position.y = birds[i].position.y + birds[i].collision_radius;
-                player->velocity = -PLAYER_BIRD_BOUNCE;
+            float x_distance = fabs(player->position.x - birds[i].position.x);
+            float y_distance = fabs(player->position.y - birds[i].position.y);
+            if (x_distance < birds[i].collision_radius && y_distance < birds[i].collision_radius) {
+                birds[i].health -= player->damage;
+                if (birds[i].health <= 0) {
+                    state->player.level_score++;
+                    state->player.bird_multiplier++;
+                    player->obliterated_birds[birds[i].type]++;
+                    birds[i].state = BIRD_STATE_DYING;
+                    Vector2 direction = vec2_normalized(
+                        birds[i].position.x - player->position.x,
+                        birds[i].position.y - player->position.y
+                    );
+                    birds[i].death_master_velocity.x = direction.x * BIRD_DEATH_VELOCITY_MULTIPLIER;
+                    birds[i].death_master_velocity.y = -direction.y * BIRD_DEATH_VELOCITY_MULTIPLIER;
+                }
+                if (player->state == PLAYER_STATE_UP) {
+                    if (!up_arrow_hold) {
+                        player->position.y = birds[i].position.y - birds[i].collision_radius;
+                        player->state = PLAYER_STATE_DOWN;
+                    }
+                } else {
+                    if (!down_arrow_hold) {
+                        player->position.y = birds[i].position.y + birds[i].collision_radius;
+                        player->state = PLAYER_STATE_UP;
+                    }
+                }
             }
         }
-    }
-    player->anim_time += state->delta_time;
-    if (player->anim_time > PLAYER_ANIM_SPEED) {
-        player->anim_time = 0.0f;
-        player->anim_step = (player->anim_step + 1) % PLAYER_ANIM_TEX_AMOUNT;
     }
     if (should_display_multiplier(state)) {
         state->player.bird_multiplier_timer += state->delta_time;
@@ -124,15 +141,11 @@ void player_render(State *state) {
     DrawRectangleV(position, score_text_dimensions, (Color) { 0, 0, 0, 128 });
     DrawTextPro(state->bird_computer.font, buffer, position, (Vector2) { 0, 0 }, 0, font_size, 0, WHITE);
     if (should_display_multiplier(state)) {
-        if (state->player.bird_multiplier_display >= PLAYER_MULTIPLIER_MAX) {
-            sprintf(buffer, " Max-Multiplier ");
-        } else {
-            sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
-        }
+        sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
         Vector2 multiplier_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
         position.x = state->game_left + score_text_dimensions.x;
         DrawRectangleV(position, multiplier_text_dimensions, (Color) { 255, 0, 0, 128 });
         DrawTextPro(state->bird_computer.font, buffer, position, (Vector2) { 0, 0 }, 0, font_size, 0, WHITE);
     }
-    tex_atlas_draw(state, TEX_PLAYER_1, state->player.position, state->player.rotation, OPAQUE);
+    tex_atlas_draw(state, TEX_PLAYER_2, state->player.position, state->player.rotation, OPAQUE);
 }

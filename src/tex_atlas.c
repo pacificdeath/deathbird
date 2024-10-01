@@ -17,7 +17,7 @@ static void add_texture_offsets(State *state, int *x, int *y, Tex tex, int size,
 }
 
 void tex_atlas_init(State *state) {
-    state->tex_atlas = LoadTexture("./textures/atlas2.png");
+    state->tex_atlas = LoadTexture("./textures/atlas.png");
     int x = ATLAS_PADDING;
     int y = ATLAS_PADDING;
     add_texture_offsets(state, &x, &y, TEX_ENV_NIGHT_SKY, 128, 8, true);
@@ -27,7 +27,7 @@ void tex_atlas_init(State *state) {
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_1, 32, 2, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
-    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 1, true);
+    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 2, true);
 }
 
 void tex_atlas_cleanup(State *state) {
