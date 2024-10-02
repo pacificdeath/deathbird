@@ -43,7 +43,7 @@ void update_state_dimensions(State *state, int w, int h) {
     float half_padding_h = padding_h / 2;
     state->game_width = lroundf(w - padding_w);
     state->game_height = lroundf(h - padding_h);
-    state->scale_multiplier = ratio_unit / ENV_TEX_SIZE;
+    state->scale_multiplier = ratio_unit / LEVEL_ENV_TEX_SIZE;
     state->game_left = lroundf(half_padding_w);
     state->game_right = lroundf(half_padding_w + state->game_width);
     state->game_top = lroundf(half_padding_h);
@@ -65,8 +65,8 @@ int catch_window_resize(State *state) {
 int main(void) {
     State *state = (State *)calloc(1, sizeof(State));
     {
-        int window_min_width = ENV_TEX_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
-        int window_min_height = ENV_TEX_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
+        int window_min_width = LEVEL_ENV_TEX_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
+        int window_min_height = LEVEL_ENV_TEX_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
         update_state_dimensions(state, window_min_width, window_min_height);
 
         SetTraceLogLevel(
@@ -101,6 +101,7 @@ int main(void) {
 
     tex_atlas_init(state);
     level_setup_next(state);
+    bird_init(state);
     bird_computer_init(state);
     bird_computer_level_setup(state);
 
@@ -153,7 +154,7 @@ int main(void) {
 
         BeginDrawing();
 
-        ClearBackground(OUT_OF_BOUNDS_COLOR);
+        ClearBackground(GAME_OUT_OF_BOUNDS_COLOR);
 
         switch (state->game_state) {
         case GAME_STATE_NEXT_LEVEL:
@@ -170,17 +171,18 @@ int main(void) {
 
         // render out of bounds padding bars
         if (state->game_left > 0) {
-            DrawRectangle(0, 0, state->game_left, state->game_height, OUT_OF_BOUNDS_COLOR);
-            DrawRectangle(state->game_right, 0, state->game_left, state->game_height, OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(0, 0, state->game_left, state->game_height, GAME_OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(state->game_right, 0, state->game_left, state->game_height, GAME_OUT_OF_BOUNDS_COLOR);
         } else if (state->game_top > 0) {
-            DrawRectangle(0, 0, state->game_width, state->game_top, OUT_OF_BOUNDS_COLOR);
-            DrawRectangle(0, state->game_bottom, state->game_width, state->game_top, OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(0, 0, state->game_width, state->game_top, GAME_OUT_OF_BOUNDS_COLOR);
+            DrawRectangle(0, state->game_bottom, state->game_width, state->game_top, GAME_OUT_OF_BOUNDS_COLOR);
         }
 
         EndDrawing();
     }
 
     tex_atlas_cleanup(state);
+    bird_cleanup(state);
     bird_computer_cleanup(state);
 
     for (int i = 0; i < DEATH_SOUND_AMOUNT; i++) {

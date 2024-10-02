@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "raylib.h"
 #include "main.h"
 
@@ -19,7 +20,7 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
     Scroll_Env *scroll_envs = state->scroll_envs;
     int scroll_env_amount = 0;
     switch (environment) {
-    case LEVEL_ENVIRONMENT_NONE: break;
+    default: break;
     case LEVEL_ENVIRONMENT_FOREST: {
         scroll_envs[0].tex = TEX_ENV_NIGHT_SKY;
         scroll_envs[0].horizontal_textures = 4;
@@ -131,6 +132,7 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
 void level_setup_next(State *state) {
     Level_Environment environment;
     switch (state->current_level_data.environment) {
+    default:
     case LEVEL_ENVIRONMENT_NONE: {
         environment = LEVEL_ENVIRONMENT_FOREST;
     } break;
@@ -152,6 +154,7 @@ void level_setup_next(State *state) {
     int extra_birds = next_round * LEVEL_BIRD_AMOUNT_MULTIPLIER;
     int extra_birds_random = GetRandomValue(LEVEL_MIN_RANDOM_BIRD_AMOUNT, LEVEL_MAX_RANDOM_BIRD_AMOUNT);
     state->next_level_data.total_birds = LEVEL_BASE_BIRD_TOTAL + extra_birds + extra_birds_random;
+    state->next_level_data.required_score = state->next_level_data.total_birds + (next_round * next_round);
 
     if (next_round >= LEVELS_BEFORE_MIN_FREQUENCY) {
         state->next_level_data.bird_frequency = LEVEL_MIN_BIRD_FREQUENCY;
@@ -210,5 +213,45 @@ void level_render(State *state) {
                 tex_atlas_draw(state, scroll_envs[i].tex, position, 0.0f, scroll_envs[i].opacity);
             }
         }
+    }
+    char buffer[16];
+    sprintf(buffer, " Round: %i ", state->current_round);
+    int font_size = (BIRD_COMPUTER_FONT_SIZE / state->bird_computer.font.baseSize) * state->scale_multiplier;
+    Vector2 round_number_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
+    Vector2 round_number_position = { .x = state->game_left, .y = state->game_top };
+    DrawRectangleV(round_number_position, round_number_text_dimensions, LEVEL_CURRENT_ROUND_TEXT_BG_COLOR);
+    DrawTextPro(state->bird_computer.font, buffer, round_number_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_CURRENT_ROUND_TEXT_COLOR);
+    Vector2 score_bar_position = {
+        .x = state->game_left + state->game_width / 4,
+        .y = state->game_top,
+    };
+    Vector2 score_bar_size = {
+        .x = state->game_width / 2,
+        .y = state->game_height / 20,
+    };
+    if (state->player.level_score < state->current_level_data.required_score) {
+        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_BG_COLOR);
+        float player_relative_score = (float)state->player.level_score / (float)state->current_level_data.required_score;
+        score_bar_size.x = score_bar_size.x * player_relative_score;
+        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_NOT_REACHED_FG_COLOR);
+    } else {
+        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_REACHED_FG_COLOR);
+    }
+    sprintf(buffer, "%i / %i", state->player.level_score, state->current_level_data.required_score);
+    Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
+    Vector2 score_text_position = {
+        .x = state->game_center_x - (score_text_dimensions.x / 2),
+        .y = score_bar_position.y + (score_bar_size.y / 2) - (score_text_dimensions.y / 2)
+    };
+    DrawTextPro(state->bird_computer.font, buffer, score_text_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_SCORE_TEXT_COLOR);
+    if (state->player.bird_multiplier_timer > 0.0f) {
+        sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
+        Vector2 multiplier_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
+        Vector2 multiplier_text_position = {
+            .x = state->game_right - multiplier_text_dimensions.x,
+            .y = state->game_top
+        };
+        DrawRectangleV(multiplier_text_position, multiplier_text_dimensions, LEVEL_MULTIPLIER_TEXT_BG_COLOR);
+        DrawTextPro(state->bird_computer.font, buffer, multiplier_text_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_MULTIPLIER_TEXT_COLOR);
     }
 }

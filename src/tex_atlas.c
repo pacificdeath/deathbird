@@ -27,7 +27,7 @@ void tex_atlas_init(State *state) {
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_1, 32, 2, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
-    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 2, true);
+    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 3, true);
 }
 
 void tex_atlas_cleanup(State *state) {

@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "raylib.h"
 #include "main.h"
 
@@ -6,7 +5,7 @@ static void draw_header_text(State *state, Bird_Computer_Dimensions *dimensions,
     const Vector2 text_dimensions = MeasureTextEx(state->bird_computer.font, text, dimensions->font_size, 0.0f);
     Vector2 text_origin = (Vector2){ 0, -(dimensions->header_size / 2.0f) + (text_dimensions.y / 2.0f) };
     Vector2 position = {
-        .x = state->game_left + (state->game_width - text_dimensions.x) / 2,
+        .x = state->game_center_x - (text_dimensions.x / 2),
         .y = state->game_top
     };
     DrawTextPro(
@@ -63,7 +62,7 @@ static void draw_option_cursor(State *state, Bird_Computer_Dimensions *dimension
     );
 }
 
-void draw_info_text_line(State *state, Bird_Computer_Dimensions *dimensions, char *text, int line_idx) {
+static void draw_info_text_line(State *state, Bird_Computer_Dimensions *dimensions, char *text, int line_idx) {
     const Vector2 text_dimensions = MeasureTextEx(state->bird_computer.font, text, dimensions->font_size, 0.0f);
     Vector2 text_origin = { 0, -(dimensions->line_size / 2.0f) + (text_dimensions.y / 2.0f) };
     Vector2 position = {
@@ -153,14 +152,21 @@ void bird_computer_cleanup(State *state) {
 
 void bird_computer_level_setup(State *state) {
     Bird_Computer *bird_computer = &state->bird_computer;
+    bird_computer->shop.item_count = 3;
+    bird_computer->shop.items[0].type = SHOP_ITEM_PLAYABLE_1;
+    bird_computer->shop.items[0].tex = TEX_PLAYER_1;
+    bird_computer->shop.items[1].type = SHOP_ITEM_PLAYABLE_2;
+    bird_computer->shop.items[1].tex = TEX_PLAYER_2;
+    bird_computer->shop.items[2].type = SHOP_ITEM_PLAYABLE_3;
+    bird_computer->shop.items[2].tex = TEX_PLAYER_3;
     bird_computer->option_idx = 0;
     bird_computer->option_area_offset = 0;
     if (state->current_round == 0) {
         bird_computer->option_idx_results = -1;
         bird_computer->option_idx_continue = 0;
         bird_computer->option_idx_multipliers = 1;
-        bird_computer->option_idx_shop = -1;
-        bird_computer->option_count = 2;
+        bird_computer->option_idx_shop = 2;
+        bird_computer->option_count = 3;
     } else {
         bird_computer->option_idx_results = 0;
         bird_computer->option_idx_continue = 1;
@@ -188,6 +194,7 @@ void bird_computer_update(State *state) {
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         switch (bird_computer->state) {
+        default:
         case BIRD_COMPUTER_STATE_DEFAULT: {
             int option_idx_with_offset = bird_computer->option_idx + bird_computer->option_area_offset;
             if (option_idx_with_offset == bird_computer->option_idx_results ||
@@ -196,6 +203,8 @@ void bird_computer_update(State *state) {
                 bird_computer->state = BIRD_COMPUTER_STATE_INFO_BOX;
             } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
                 state->game_state = GAME_STATE_NEXT_LEVEL;
+            } else if (option_idx_with_offset == bird_computer->option_idx_shop) {
+                bird_computer->state = BIRD_COMPUTER_STATE_BUY_THINGS;
             }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
@@ -228,7 +237,7 @@ void bird_computer_render(State *state) {
         .height = dimensions.line_section_size
     };
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
-    rec.x = state->game_left + (state->game_width / 2);
+    rec.x = state->game_center_x;
     DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
     {
         // cursor background
@@ -261,10 +270,12 @@ void bird_computer_render(State *state) {
 
     // options
     switch (bird_computer->state) {
+        default:
         case BIRD_COMPUTER_STATE_DEFAULT: {
             for (int option_idx = bird_computer->option_area_offset; option_idx < bird_computer->option_count; option_idx++) {
                 if (option_idx == bird_computer->option_idx_results) {
                     switch (state->current_level_data.environment) {
+                        default:
                         case LEVEL_ENVIRONMENT_NONE: {
                             draw_option_text(state, &dimensions, "Results from nothing", option_idx);
                         } break;
@@ -284,7 +295,7 @@ void bird_computer_render(State *state) {
                         sprintf(buffer, "Current round: %i", state->current_round);
                         draw_info_text_line(state, &dimensions, buffer, info_line_idx);
                         info_line_idx++;
-                        sprintf(buffer, "Round score: %i", state->player.level_score);
+                        sprintf(buffer, "Round score: %i/%i", state->player.level_score, state->current_level_data.required_score);
                         draw_info_text_line(state, &dimensions, buffer, info_line_idx);
                         info_line_idx++;
                         int obliterated_birds_total = 0;
@@ -296,6 +307,7 @@ void bird_computer_render(State *state) {
                     }
                 } else if (option_idx == bird_computer->option_idx_continue) {
                     switch (state->next_level_data.environment) {
+                        default:
                         case LEVEL_ENVIRONMENT_NONE: {
                             draw_option_text(state, &dimensions, "Continue to nothing?", option_idx);
                         } break;
@@ -313,6 +325,7 @@ void bird_computer_render(State *state) {
                         char buffer[32];
                         Tex tex;
                         switch (state->next_level_data.environment) {
+                        default:
                         case LEVEL_ENVIRONMENT_NONE: {
                             draw_info_text_line(state, &dimensions, "Nothing", 4);
                         }
@@ -336,10 +349,12 @@ void bird_computer_render(State *state) {
                         for (int i = 0; i < state->next_level_data.scroll_env_amount; i++) {
                             tex_atlas_draw_raw(state, tex + i, position, 0, 0.6f);
                         }
-                        sprintf(buffer, "Upcoming birds: %i", state->next_level_data.total_birds);
+                        sprintf(buffer, "Required score: %i", state->next_level_data.required_score);
                         draw_info_text_line(state, &dimensions, buffer, 5);
-                        sprintf(buffer, "Bird frequency: %.2f/sec", state->next_level_data.bird_frequency);
+                        sprintf(buffer, "Upcoming birds: %i", state->next_level_data.total_birds);
                         draw_info_text_line(state, &dimensions, buffer, 6);
+                        sprintf(buffer, "Bird frequency: %.2f/sec", state->next_level_data.bird_frequency);
+                        draw_info_text_line(state, &dimensions, buffer, 7);
                     }
                 } else if (option_idx == bird_computer->option_idx_multipliers) {
                     draw_option_text(state, &dimensions, "Highest multipliers", option_idx);
@@ -360,44 +375,44 @@ void bird_computer_render(State *state) {
                         }
                     }
                 } else if (option_idx == bird_computer->option_idx_shop) {
-                    switch (state->current_level_data.environment) {
-                        case LEVEL_ENVIRONMENT_NONE: {
-                            draw_option_text(state, &dimensions, "The empty shop", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_FOREST: {
-                            draw_option_text(state, &dimensions, "The Forest Shop", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MEADOWS: {
-                            draw_option_text(state, &dimensions, "The Meadow Shop", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                            draw_option_text(state, &dimensions, "The Mountain Shop", option_idx);
-                        } break;
-                    }
+                    draw_option_text(state, &dimensions, "Go buy things", option_idx);
                 }
             }
             draw_option_cursor(state, &dimensions);
+        } break;
+        case BIRD_COMPUTER_STATE_BUY_THINGS: {
+            Shop *shop = &bird_computer->shop;
+            for (int i = 0; i < shop->item_count; i++) {
+                switch (shop->items[i].type) {
+                case SHOP_ITEM_SIMPLE: {
+                    draw_option_text(state, &dimensions, "Something", i);
+                } break;
+                case SHOP_ITEM_PLAYABLE_1: {
+                    draw_option_text(state, &dimensions, "DTHBRD-50", i);
+                } break;
+                case SHOP_ITEM_PLAYABLE_2: {
+                    draw_option_text(state, &dimensions, "DTHBRD-44", i);
+                } break;
+                case SHOP_ITEM_PLAYABLE_3: {
+                    draw_option_text(state, &dimensions, "DTHBRD-40", i);
+                } break;
+                default:
+                    break;
+                }
+                if (bird_computer->option_idx == i) {
+                    Vector2 position = {
+                        .x = state->game_center_x + (state->game_width / 4),
+                        .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
+                    };
+                    tex_atlas_draw_raw(state, shop->items[i].tex, position, 0, 1.0f);
+                }
+            }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
             if (bird_computer->option_idx_results == bird_computer->option_idx) {
                 char *text =
                     "You are definitely a bad person\n"
                     "and that is true";
-                draw_info_box(state, &dimensions, text);
-            } else if (bird_computer->option_idx_multipliers == bird_computer->option_idx) {
-                char *text =
-                    "When you smash a bunch of birds in a row\n"
-                    "without touching the ground or ceiling\n"
-                    "you get a score multiplier:\n"
-                    "2x-Multiplier: 4 score\n"
-                    "3x-Multiplier: 9 score\n"
-                    "4x-Multiplier: 16 score\n"
-                    "5x-Multiplier: 25 score\n"
-                    "6x-Multiplier: 36 score\n"
-                    "7x-Multiplier: 49 score\n"
-                    "9x-Multiplier: 64 score\n"
-                    "9x-Multiplier: 81 score\n"
-                    "Max-Multiplier: 100 score";
                 draw_info_box(state, &dimensions, text);
             }
         } break;

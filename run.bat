@@ -19,12 +19,16 @@ for %%x in (%*) do (
     ) else if "%%x"=="g" (
         set GDB=1
         set DEBUG=%D%
+        echo GDB is enabled
     ) else if "%%x"=="d" (
         set DEBUG=%D%
+        echo DEBUG is enabled
     ) else if "%%x"=="v" (
         set VERBOSE=%V%
+        echo VERBOSE is enabled
     ) else if "%%x"=="f" (
         set FULLSCREEN=%F%
+        echo FULLSCREEN is enabled
     ) else (
         set PROGRAM="%%x"
     )
@@ -38,8 +42,8 @@ gcc ^
     !DEBUG! ^
     !VERBOSE! ^
     !FULLSCREEN! ^
-    .\src\main.c ^
-    -o deathbird.exe ^
+    -o ./build/deathbird.exe ^
+    ./src/main.c ^
     -O0 ^
     -Wall ^
     -std=c99 ^
@@ -57,9 +61,9 @@ if not %errorlevel% equ 0 (
 
 if %errorlevel% equ 0 (
     if !GDB!==1 (
-        gdb deathbird.exe
+        gdb .\build\deathbird.exe
     ) else (
-        deathbird.exe !PROGRAM!
+        .\build\deathbird.exe !PROGRAM!
     )
 )
 goto :end
