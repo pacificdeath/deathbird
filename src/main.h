@@ -13,7 +13,7 @@
 #define ATLAS_PADDING 1
 
 #define LEVEL_ENV_TEX_SIZE 128.0f
-#define LEVEL_BASE_BIRD_TOTAL 10
+#define LEVEL_BASE_BIRD_TOTAL 40
 #define LEVEL_MIN_RANDOM_BIRD_AMOUNT 0
 #define LEVEL_MAX_RANDOM_BIRD_AMOUNT 10
 #define LEVEL_BIRD_AMOUNT_MULTIPLIER 5
@@ -24,13 +24,12 @@
 #define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
 #define LEVEL_CURRENT_ROUND_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
 #define LEVEL_CURRENT_ROUND_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
-#define LEVEL_MULTIPLIER_TEXT_COLOR ((Color) { 255, 0, 0, 255 })
 #define LEVEL_SCORE_BG_COLOR ((Color) { 0, 0, 0, 128 })
 #define LEVEL_SCORE_NOT_REACHED_FG_COLOR ((Color) { 0, 255, 0, 128 })
 #define LEVEL_SCORE_REACHED_FG_COLOR ((Color) { 0, 128, 255, 128 })
 #define LEVEL_SCORE_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
-#define LEVEL_MULTIPLIER_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
-#define LEVEL_MULTIPLIER_TEXT_COLOR ((Color) { 255, 0, 0, 255 })
+#define LEVEL_MULTIPLIER_TEXT_BG_COLOR ((Color) { 255, 0, 0, 255 })
+#define LEVEL_MULTIPLIER_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 
 #define PLAYER_VERTICAL_SPEED 1.5f
 #define PLAYER_HORIZONTAL_SPEED 2.0f
@@ -58,15 +57,16 @@
 #define BIRD_DEATH_MAX_RANDOM_ANGULAR_VELOCITY 1400.0f
 #define BIRD_RESET_RIGHT 1.2f
 #define BIRD_RESET_LEFT -BIRD_RESET_RIGHT
-#define BIRD_VERTICAL_FREEDOM 0.8f
-#define BIRD_GIANT_SPLASH_RADIUS 0.5f
+#define BIRD_VERTICAL_FREEDOM 0.7f
+#define BIRD_GIANT_SPLASH_RADIUS 1.2f
 
-#define BIRD_COMPUTER_FONT "consolas.ttf"
-#define BIRD_COMPUTER_FONT_SIZE 350
+#define BIRD_COMPUTER_FONT "bios.ttf"
+#define BIRD_COMPUTER_FONT_SIZE 250
 #define BIRD_COMPUTER_BG_COLOR ((Color) { 0, 0, 192, 255 })
 #define BIRD_COMPUTER_CURSOR_BG_COLOR ((Color) { 255, 0, 0, 255 })
 #define BIRD_COMPUTER_FG_COLOR ((Color) { 255, 255, 255, 255 })
 #define BIRD_COMPUTER_TEXT_COLOR ((Color) { 255, 255, 0, 255 })
+#define BIRD_COMPUTER_ACTIVE_LEVEL_COLOR ((Color) { 0, 255, 0, 255 })
 #define BIRD_COMPUTER_HEADER_SIZE 0.1
 #define BIRD_COMPUTER_LINE_COUNT 8
 #define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
@@ -184,8 +184,6 @@ typedef enum Bird_Type {
 typedef enum Bird_Computer_State {
     BIRD_COMPUTER_STATE_DEFAULT,
     BIRD_COMPUTER_STATE_SHOP,
-    BIRD_COMPUTER_STATE_BUY_THINGS,
-    BIRD_COMPUTER_STATE_SELL_THINGS,
     BIRD_COMPUTER_STATE_INFO_BOX,
 } Bird_Computer_State;
 
@@ -255,23 +253,6 @@ typedef struct Bird {
     float death_rotations[BIRD_DEATH_PARTS];
 } Bird;
 
-typedef struct Shop_Item_Playable {
-    uint8 longevity;
-    uint8 damage;
-    uint8 speed;
-} Shop_Item_Playable;
-
-typedef struct Shop_Item {
-    Shop_Item_Type type;
-    Tex tex;
-    uint cost;
-} Shop_Item;
-
-typedef struct Shop {
-    uint item_count;
-    Shop_Item items[BIRD_COMPUTER_SHOP_CAPACITY];
-} Shop;
-
 typedef struct Bird_Computer_Dimensions {
     float font_size;
     float x_fract;
@@ -285,14 +266,13 @@ typedef struct Bird_Computer_Dimensions {
 typedef struct Bird_Computer {
     Bird_Computer_State state;
     Font font;
-    Shop shop;
     uint8 option_idx;
     uint8 option_count;
     uint8 option_area_offset;
     uint8 option_idx_results;
     uint8 option_idx_continue;
-    uint8 option_idx_shop;
     uint8 option_idx_multipliers;
+    uint16 discovered_levels;
 } Bird_Computer;
 
 typedef struct State {

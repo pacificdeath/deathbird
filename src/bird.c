@@ -56,7 +56,7 @@ void birds_update(State *state) {
             case LEVEL_ENVIRONMENT_FOREST: {
                 if (state->current_level_data.spawned_birds % 10 == 0) {
                     birds[i].type = BIRD_TYPE_GIANT;
-                    birds[i].health = 3;
+                    birds[i].health = 2;
                     birds[i].collision_radius = 0.2f;
                 } else {
                     birds[i].type = BIRD_TYPE_WHITE;
@@ -167,7 +167,7 @@ bool bird_try_destroy(State *state, Bird *bird, Vector2 from) {
                 float x_distance = fabs(bird->position.x - state->birds[i].position.x) * GAME_WIDTH_RATIO;
                 float y_distance = fabs(bird->position.y - state->birds[i].position.y) * GAME_HEIGHT_RATIO;
                 float hypotenuse = sqrtf(x_distance*x_distance + y_distance*y_distance);
-                if (hypotenuse < BIRD_GIANT_SPLASH_RADIUS * state->scale_multiplier) {
+                if (hypotenuse < BIRD_GIANT_SPLASH_RADIUS) {
                     bird_try_destroy(state, &state->birds[i], bird->position);
                 }
             }

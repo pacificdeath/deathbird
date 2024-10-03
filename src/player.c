@@ -20,7 +20,7 @@ static void handle_score(State *state) {
             }
         }
     }
-    player->level_score += (multiplier * multiplier) - multiplier;
+    player->level_score += (multiplier * multiplier);
     player->bird_multiplier_display = multiplier;
     player->bird_multiplier_timer = PLAYER_MULTIPLIER_DISPLAY_TIME;
 }

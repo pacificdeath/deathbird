@@ -66,6 +66,6 @@ void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation,
         .width = render_scale,
         .height = render_scale,
     };
-    Vector2 origin = { render_scale / 2.0f, render_scale / 2.0f };
+    Vector2 origin = { 0.0f, 0.0f };
     DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, WHITE);
 }

@@ -152,28 +152,20 @@ void bird_computer_cleanup(State *state) {
 
 void bird_computer_level_setup(State *state) {
     Bird_Computer *bird_computer = &state->bird_computer;
-    bird_computer->shop.item_count = 3;
-    bird_computer->shop.items[0].type = SHOP_ITEM_PLAYABLE_1;
-    bird_computer->shop.items[0].tex = TEX_PLAYER_1;
-    bird_computer->shop.items[1].type = SHOP_ITEM_PLAYABLE_2;
-    bird_computer->shop.items[1].tex = TEX_PLAYER_2;
-    bird_computer->shop.items[2].type = SHOP_ITEM_PLAYABLE_3;
-    bird_computer->shop.items[2].tex = TEX_PLAYER_3;
     bird_computer->option_idx = 0;
     bird_computer->option_area_offset = 0;
     if (state->current_round == 0) {
         bird_computer->option_idx_results = -1;
         bird_computer->option_idx_continue = 0;
-        bird_computer->option_idx_multipliers = 1;
-        bird_computer->option_idx_shop = 2;
-        bird_computer->option_count = 3;
+        bird_computer->option_idx_multipliers = -1;
+        bird_computer->option_count = 1;
     } else {
         bird_computer->option_idx_results = 0;
         bird_computer->option_idx_continue = 1;
         bird_computer->option_idx_multipliers = 2;
-        bird_computer->option_idx_shop = 3;
-        bird_computer->option_count = 4;
+        bird_computer->option_count = 3;
     }
+    bird_computer->discovered_levels |= (1 << (state->next_level_data.environment - 1));
 }
 
 void bird_computer_update(State *state) {
@@ -203,8 +195,6 @@ void bird_computer_update(State *state) {
                 bird_computer->state = BIRD_COMPUTER_STATE_INFO_BOX;
             } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
                 state->game_state = GAME_STATE_NEXT_LEVEL;
-            } else if (option_idx_with_offset == bird_computer->option_idx_shop) {
-                bird_computer->state = BIRD_COMPUTER_STATE_BUY_THINGS;
             }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
@@ -274,21 +264,7 @@ void bird_computer_render(State *state) {
         case BIRD_COMPUTER_STATE_DEFAULT: {
             for (int option_idx = bird_computer->option_area_offset; option_idx < bird_computer->option_count; option_idx++) {
                 if (option_idx == bird_computer->option_idx_results) {
-                    switch (state->current_level_data.environment) {
-                        default:
-                        case LEVEL_ENVIRONMENT_NONE: {
-                            draw_option_text(state, &dimensions, "Results from nothing", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_FOREST: {
-                            draw_option_text(state, &dimensions, "Forest round results", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MEADOWS: {
-                            draw_option_text(state, &dimensions, "Meadows round results", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                            draw_option_text(state, &dimensions, "Mountains round results", option_idx);
-                        } break;
-                    }
+                    draw_option_text(state, &dimensions, "Current round results", option_idx);
                     if (option_idx == bird_computer->option_idx) {
                         int info_line_idx = 0;
                         char buffer[32];
@@ -306,55 +282,102 @@ void bird_computer_render(State *state) {
                         draw_info_text_line(state, &dimensions, buffer, info_line_idx);
                     }
                 } else if (option_idx == bird_computer->option_idx_continue) {
-                    switch (state->next_level_data.environment) {
-                        default:
-                        case LEVEL_ENVIRONMENT_NONE: {
-                            draw_option_text(state, &dimensions, "Continue to nothing?", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_FOREST: {
-                            draw_option_text(state, &dimensions, "Continue to Forest", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MEADOWS: {
-                            draw_option_text(state, &dimensions, "Continue to Meadows", option_idx);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                            draw_option_text(state, &dimensions, "Continue to Mountains", option_idx);
-                        } break;
-                    }
+                    draw_option_text(state, &dimensions, "Start next round", option_idx);
                     if (option_idx == bird_computer->option_idx) {
-                        char buffer[32];
-                        Tex tex;
-                        switch (state->next_level_data.environment) {
-                        default:
-                        case LEVEL_ENVIRONMENT_NONE: {
-                            draw_info_text_line(state, &dimensions, "Nothing", 4);
+                        float map_size = state->game_width / 2 - (dimensions.x_fract * 4);
+                        float map_line_size = 2.0f * state->scale_multiplier;
+                        float map_cell_size = map_size / 3;
+                        float tex_cell_size = GAME_WIDTH_RATIO / (state->game_width / (map_cell_size - (map_line_size * 2)));
+                        float map_left = state->game_center_x + (dimensions.x_fract * 2);
+                        float map_top = state->game_top + dimensions.header_size + (dimensions.x_fract * 2);
+                        for (int map_row = 0; map_row < 3; map_row++) {
+                            for (int map_col = 0; map_col < 3; map_col++) {
+                                int cell_idx = (map_row * 3) + map_col;
+                                bool is_map_location = cell_idx == (state->next_level_data.environment - 1);
+                                Tex tex;
+                                int tex_amount = 0;
+                                uint16 discovered_level_bits = (1 << cell_idx);
+                                if ((bird_computer->discovered_levels & discovered_level_bits) == discovered_level_bits) {
+                                    switch (cell_idx) {
+                                    case 0: {
+                                        tex = TEX_ENV_NIGHT_SKY;
+                                        tex_amount = 4;
+                                    } break;
+                                    case 1: {
+                                        tex = TEX_ENV_DAY_SKY;
+                                        tex_amount = 4;
+                                    } break;
+                                    case 2: {
+                                        tex = TEX_ENV_WINTER_SKY;
+                                        tex_amount = 5;
+                                    } break;
+                                    }
+                                }
+                                Rectangle outer_rec = {
+                                    .x = map_left + (map_cell_size * map_col),
+                                    .y = map_top + (map_cell_size * map_row),
+                                    .width = map_cell_size,
+                                    .height = map_cell_size
+                                };
+                                if (is_map_location) {
+                                    DrawRectangleLinesEx(outer_rec, map_line_size, BIRD_COMPUTER_ACTIVE_LEVEL_COLOR);
+                                    float cell_2 = map_cell_size / 2;
+                                    float cell_8 = map_cell_size / 8;
+                                    {
+                                        // left arrow
+                                        Vector2 v1 = { map_left - cell_8, map_top + cell_2 + (map_row * map_cell_size) };
+                                        Vector2 v2 = { v1.x - cell_8, v1.y - cell_8 };
+                                        Vector2 v3 = { v2.x, v1.y + cell_8 };
+                                        DrawTriangle(v1, v2, v3, BIRD_COMPUTER_ACTIVE_LEVEL_COLOR);
+                                    }
+                                    {
+                                        // top arrow
+                                        Vector2 v1 = { map_left + cell_2 + (map_col * map_cell_size), map_top - cell_8 };
+                                        Vector2 v2 = { v1.x + cell_8, v1.y - cell_8 };
+                                        Vector2 v3 = { v1.x - cell_8, v2.y };
+                                        DrawTriangle(v1, v2, v3, BIRD_COMPUTER_ACTIVE_LEVEL_COLOR);
+                                    }
+                                }
+                                Vector2 tex_position = {
+                                    .x = map_left + map_line_size + (map_cell_size * map_col),
+                                    .y = map_top + map_line_size + (map_cell_size * map_row),
+                                };
+                                if (tex_amount > 0) {
+                                    for (int i = 0; i < tex_amount; i++) {
+                                        tex_atlas_draw_raw(state, tex + i, tex_position, 0, tex_cell_size);
+                                    }
+                                } else {
+                                    Rectangle inner_rec = {
+                                        .x = map_left + map_line_size + (map_cell_size * map_col),
+                                        .y = map_top + map_line_size + (map_cell_size * map_row),
+                                        .width = map_cell_size - (map_line_size * 2),
+                                        .height = map_cell_size - (map_line_size * 2)
+                                    };
+                                    DrawRectangleRec(inner_rec, BLACK);
+                                    char *unknown_text = "???";
+                                    Vector2 unknwon_text_dimensions = MeasureTextEx(
+                                        bird_computer->font,
+                                        unknown_text,
+                                        dimensions.font_size,
+                                        0
+                                    );
+                                    Vector2 unknown_text_position = {
+                                        .x = outer_rec.x + (map_cell_size / 2) - unknwon_text_dimensions.x / 2,
+                                        .y = outer_rec.y + (map_cell_size / 2) - unknwon_text_dimensions.y / 2
+                                    };
+                                    DrawTextPro(
+                                        bird_computer->font,
+                                        unknown_text,
+                                        unknown_text_position,
+                                        (Vector2){0},
+                                        0.0f,
+                                        dimensions.font_size,
+                                        0.0f,
+                                        WHITE
+                                    );
+                                }
+                            }
                         }
-                        case LEVEL_ENVIRONMENT_FOREST: {
-                            tex = TEX_ENV_NIGHT_SKY;
-                            draw_info_text_line(state, &dimensions, "Forest", 4);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MEADOWS: {
-                            tex = TEX_ENV_DAY_SKY;
-                            draw_info_text_line(state, &dimensions, "Meadows", 4);
-                        } break;
-                        case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                            tex = TEX_ENV_WINTER_SKY;
-                            draw_info_text_line(state, &dimensions, "Mountains", 4);
-                        } break;
-                        }
-                        Vector2 position = {
-                            .x = state->game_center_x + (state->game_width / 4),
-                            .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
-                        };
-                        for (int i = 0; i < state->next_level_data.scroll_env_amount; i++) {
-                            tex_atlas_draw_raw(state, tex + i, position, 0, 0.6f);
-                        }
-                        sprintf(buffer, "Required score: %i", state->next_level_data.required_score);
-                        draw_info_text_line(state, &dimensions, buffer, 5);
-                        sprintf(buffer, "Upcoming birds: %i", state->next_level_data.total_birds);
-                        draw_info_text_line(state, &dimensions, buffer, 6);
-                        sprintf(buffer, "Bird frequency: %.2f/sec", state->next_level_data.bird_frequency);
-                        draw_info_text_line(state, &dimensions, buffer, 7);
                     }
                 } else if (option_idx == bird_computer->option_idx_multipliers) {
                     draw_option_text(state, &dimensions, "Highest multipliers", option_idx);
@@ -374,39 +397,9 @@ void bird_computer_render(State *state) {
                             draw_info_text_line(state, &dimensions, "No multipliers", info_line_idx);
                         }
                     }
-                } else if (option_idx == bird_computer->option_idx_shop) {
-                    draw_option_text(state, &dimensions, "Go buy things", option_idx);
                 }
             }
             draw_option_cursor(state, &dimensions);
-        } break;
-        case BIRD_COMPUTER_STATE_BUY_THINGS: {
-            Shop *shop = &bird_computer->shop;
-            for (int i = 0; i < shop->item_count; i++) {
-                switch (shop->items[i].type) {
-                case SHOP_ITEM_SIMPLE: {
-                    draw_option_text(state, &dimensions, "Something", i);
-                } break;
-                case SHOP_ITEM_PLAYABLE_1: {
-                    draw_option_text(state, &dimensions, "DTHBRD-50", i);
-                } break;
-                case SHOP_ITEM_PLAYABLE_2: {
-                    draw_option_text(state, &dimensions, "DTHBRD-44", i);
-                } break;
-                case SHOP_ITEM_PLAYABLE_3: {
-                    draw_option_text(state, &dimensions, "DTHBRD-40", i);
-                } break;
-                default:
-                    break;
-                }
-                if (bird_computer->option_idx == i) {
-                    Vector2 position = {
-                        .x = state->game_center_x + (state->game_width / 4),
-                        .y = state->game_top + dimensions.header_size + (dimensions.y_fract * 3.5)
-                    };
-                    tex_atlas_draw_raw(state, shop->items[i].tex, position, 0, 1.0f);
-                }
-            }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
             if (bird_computer->option_idx_results == bird_computer->option_idx) {
