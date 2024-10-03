@@ -7,6 +7,7 @@
 #include "player.c"
 #include "bird.c"
 #include "bird_computer.c"
+#include "fader.c"
 
 float randf(float min, float max) {
     float resolution = 999999.999f;
@@ -132,11 +133,24 @@ int main(void) {
         case GAME_STATE_BIRD_COMPUTER: {
             bird_computer_update(state);
         } break;
-        case GAME_STATE_NEXT_LEVEL: {
-            level_go_to_next(state);
-            player_level_setup(state);
-            bird_level_setup(state);
-            state->game_state = GAME_STATE_DEATHBIRD;
+        case GAME_STATE_BIRD_COMPUTER_FADE_OUT: {
+            if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
+                level_go_to_next(state);
+                player_level_setup(state);
+                bird_level_setup(state);
+                state->game_state = GAME_STATE_DEATHBIRD_FADE_IN;
+            } else {
+                fade_out(state);
+            }
+        } break;
+        case GAME_STATE_DEATHBIRD_FADE_IN: {
+            level_update(state);
+            player_update(state);
+            if (state->fader.state == FADER_STATE_IN_COMPLETE) {
+                state->game_state = GAME_STATE_DEATHBIRD;
+            } else {
+                fade_in(state);
+            }
         } break;
         case GAME_STATE_DEATHBIRD: {
             level_update(state);
@@ -145,9 +159,25 @@ int main(void) {
             player_update(state);
             birds_update(state);
             if (birds_ready_for_exit(state) && player_ready_for_exit(state)) {
+                state->game_state = GAME_STATE_DEATHBIRD_FADE_OUT;
+            }
+        } break;
+        case GAME_STATE_DEATHBIRD_FADE_OUT: {
+            level_update(state);
+            player_update(state);
+            if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
                 level_setup_next(state);
                 bird_computer_level_setup(state);
+                state->game_state = GAME_STATE_BIRD_COMPUTER_FADE_IN;
+            } else {
+                fade_out(state);
+            }
+        } break;
+        case GAME_STATE_BIRD_COMPUTER_FADE_IN: {
+            if (state->fader.state == FADER_STATE_IN_COMPLETE) {
                 state->game_state = GAME_STATE_BIRD_COMPUTER;
+            } else {
+                fade_in(state);
             }
         } break;
         }
@@ -157,15 +187,23 @@ int main(void) {
         ClearBackground(GAME_OUT_OF_BOUNDS_COLOR);
 
         switch (state->game_state) {
-        case GAME_STATE_NEXT_LEVEL:
-            continue;
-        case GAME_STATE_DEATHBIRD: {
+        case GAME_STATE_DEATHBIRD_FADE_IN:
+        case GAME_STATE_DEATHBIRD:
+        case GAME_STATE_DEATHBIRD_FADE_OUT: {
             level_render(state);
             birds_render(state);
             player_render(state);
+            if (state->game_state != GAME_STATE_DEATHBIRD) {
+                fader_render(state);
+            }
         } break;
-        case GAME_STATE_BIRD_COMPUTER: {
+        case GAME_STATE_BIRD_COMPUTER_FADE_IN:
+        case GAME_STATE_BIRD_COMPUTER:
+        case GAME_STATE_BIRD_COMPUTER_FADE_OUT: {
             bird_computer_render(state);
+            if (state->game_state != GAME_STATE_BIRD_COMPUTER) {
+                fader_render(state);
+            }
         } break;
         }
 

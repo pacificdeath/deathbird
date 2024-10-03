@@ -72,6 +72,10 @@
 #define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
 #define BIRD_COMPUTER_SHOP_CAPACITY 32
 
+#define FADER_MAX 255
+#define FADER_MIN 0
+#define FADER_SPEED 500.0f
+
 #define OPAQUE 255
 #define DEATH_SOUND_AMOUNT 8
 
@@ -94,8 +98,11 @@ typedef unsigned int uint;
 
 typedef enum Game_State {
     GAME_STATE_BIRD_COMPUTER = 0,
-    GAME_STATE_NEXT_LEVEL,
+    GAME_STATE_BIRD_COMPUTER_FADE_OUT,
+    GAME_STATE_DEATHBIRD_FADE_IN,
     GAME_STATE_DEATHBIRD,
+    GAME_STATE_DEATHBIRD_FADE_OUT,
+    GAME_STATE_BIRD_COMPUTER_FADE_IN,
 } Game_State;
 
 typedef enum Tex {
@@ -194,6 +201,14 @@ typedef enum Shop_Item_Type {
     SHOP_ITEM_PLAYABLE_3,
 } Shop_Item_Type;
 
+typedef enum Fader_State {
+    FADER_STATE_NONE = 0,
+    FADER_STATE_IN,
+    FADER_STATE_IN_COMPLETE,
+    FADER_STATE_OUT,
+    FADER_STATE_OUT_COMPLETE,
+} Fader_State;
+
 typedef struct Tex_Atlas_Offset {
     int16 x;
     int16 y;
@@ -275,6 +290,11 @@ typedef struct Bird_Computer {
     uint16 discovered_levels;
 } Bird_Computer;
 
+typedef struct Fader {
+    Fader_State state;
+    float fade_level;
+} Fader;
+
 typedef struct State {
     uint screen_width;
     uint screen_height;
@@ -306,6 +326,8 @@ typedef struct State {
 
     Bird birds[BIRD_CAPACITY];
     uint birds_in_use;
+
+    Fader fader;
 
     float scale_multiplier;
     float delta_time;

@@ -194,7 +194,7 @@ void bird_computer_update(State *state) {
             ) {
                 bird_computer->state = BIRD_COMPUTER_STATE_INFO_BOX;
             } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
-                state->game_state = GAME_STATE_NEXT_LEVEL;
+                state->game_state = GAME_STATE_BIRD_COMPUTER_FADE_OUT;
             }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
