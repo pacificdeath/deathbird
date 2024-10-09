@@ -59,22 +59,23 @@ void player_update(State *state) {
     switch (player->current_input_key) {
     case KEY_LEFT: {
         player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        player->rotation -= PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
     } break;
     case KEY_RIGHT: {
         player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        player->rotation += PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
     } break;
     }
     if (player->state == PLAYER_STATE_GROUNDED) {
         player->position.y = GAME_GROUND_Y;
+        player->rotation += PLAYER_ROTATION_SPEED_GROUND * state->delta_time;
         if (up_arrow_hold) {
             player->state = PLAYER_STATE_UP;
-        } else {
-            player->rotation += PLAYER_ROTATION_SPEED * state->delta_time;
         }
     } else {
         int dir = player->state == PLAYER_STATE_UP ? 1 : -1;
         player->position.y += dir * PLAYER_VERTICAL_SPEED * state->delta_time;
-        player->rotation += PLAYER_ROTATION_SPEED_FAST * state->delta_time;
+        player->rotation += PLAYER_ROTATION_SPEED_AIR * state->delta_time;
         if (player->position.y < GAME_GROUND_Y) {
             player->position.y = GAME_GROUND_Y;
             handle_score(state);
@@ -92,7 +93,7 @@ void player_update(State *state) {
             }
             float x_distance = fabs(player->position.x - birds[i].position.x);
             float y_distance = fabs(player->position.y - birds[i].position.y);
-            if (x_distance < birds[i].collision_radius && y_distance < birds[i].collision_radius) {
+            if (x_distance < birds[i].alive.collision_radius && y_distance < birds[i].alive.collision_radius) {
                 if (y_distance < closest) {
                     bird = &birds[i];
                     bird_hit = true;
@@ -104,12 +105,12 @@ void player_update(State *state) {
             bool bird_was_destroyed = bird_try_destroy(state, bird, player->position);
             if (player->state == PLAYER_STATE_UP) {
                 if (!up_arrow_hold || !bird_was_destroyed) {
-                    player->position.y = bird->position.y - bird->collision_radius;
+                    player->position.y = bird->position.y - bird->alive.collision_radius;
                     player->state = PLAYER_STATE_DOWN;
                 }
             } else {
                 if (!down_arrow_hold || !bird_was_destroyed) {
-                    player->position.y = bird->position.y + bird->collision_radius;
+                    player->position.y = bird->position.y + bird->alive.collision_radius;
                     player->state = PLAYER_STATE_UP;
                 }
             }

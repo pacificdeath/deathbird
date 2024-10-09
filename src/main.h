@@ -33,14 +33,15 @@
 
 #define PLAYER_VERTICAL_SPEED 1.5f
 #define PLAYER_HORIZONTAL_SPEED 2.0f
-#define PLAYER_ROTATION_SPEED 500.0f
-#define PLAYER_ROTATION_SPEED_FAST 2500.0f
+#define PLAYER_ROTATION_SPEED_GROUND -450.0f
+#define PLAYER_ROTATION_SPEED_GROUND_MOVEMENT 1200.0f
+#define PLAYER_ROTATION_SPEED_AIR 2500.0f
 #define PLAYER_SMALLEST_VALID_MULTIPLIER 2
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 #define BIRD_CAPACITY 32
 #define BIRD_DEATH_BODY_PARTS 6 // (head) + (body) + (2 wings) + (2 eyes)
-#define BIRD_DEATH_GORE_PARTS 8
+#define BIRD_DEATH_GORE_PARTS 4
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
 #define BIRD_GRAVITY 4.0f
 #define BIRD_MIN_MOVE_SPEED 0.2f
@@ -181,6 +182,7 @@ typedef enum Bird_State {
 } Bird_State;
 
 typedef enum Bird_Type {
+    BIRD_TYPE_NONE,
     BIRD_TYPE_WHITE,
     BIRD_TYPE_GIANT,
     BIRD_TYPE_YELLOW,
@@ -251,21 +253,32 @@ typedef struct Player {
     uint highest_multipliers[BIRD_COMPUTER_LINE_COUNT]; // exclude 1x multiplier
 } Player;
 
-typedef struct Bird {
-    Bird_Type type;
-    Bird_State state;
+typedef struct Bird_Alive {
     uint8 health;
-    uint8 blood_idx;
     uint8 current_tex;
     float collision_radius;
     float move_speed;
     float anim_time;
     float damage_timer;
-    Vector2 position;
+} Bird_Alive;
+
+typedef struct Bird_Dead {
+    uint8 blood_idx;
+    float anim_time;
     Vector2 death_velocities[BIRD_DEATH_PARTS];
     Vector2 death_positions[BIRD_DEATH_PARTS];
     float death_angular_velocities[BIRD_DEATH_PARTS];
     float death_rotations[BIRD_DEATH_PARTS];
+} Bird_Dead;
+
+typedef struct Bird {
+    Bird_Type type;
+    Bird_State state;
+    Vector2 position;
+    union {
+        Bird_Alive alive;
+        Bird_Dead dead;
+    };
 } Bird;
 
 typedef struct Bird_Computer_Dimensions {

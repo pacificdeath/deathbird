@@ -122,10 +122,8 @@ int main(void) {
 
     int skip_frames = 0;
     while (!WindowShouldClose()) {
-        printf("%i\n", IsWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH));
         if (skip_frames > 0) {
             skip_frames--;
-            dbgf(GetFrameTime());
             BeginDrawing();
             DrawRectangle(0, 0, state->window_width, state->window_height, BLACK);
             EndDrawing();
