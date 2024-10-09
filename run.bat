@@ -3,11 +3,9 @@ setlocal enabledelayedexpansion
 
 set D="-g -DDEBUG"
 set V="-DVERBOSE"
-set F="-DFULLSCREEN"
 set PROGRAM=""
 set DEBUG=""
 set VERBOSE=""
-set FULLSCREEN=""
 set GDB=0
 set TEST_THREAD=""
 set LIST_TOKENS=""
@@ -26,9 +24,6 @@ for %%x in (%*) do (
     ) else if "%%x"=="v" (
         set VERBOSE=%V%
         echo VERBOSE is enabled
-    ) else if "%%x"=="f" (
-        set FULLSCREEN=%F%
-        echo FULLSCREEN is enabled
     ) else (
         set PROGRAM="%%x"
     )
@@ -36,12 +31,10 @@ for %%x in (%*) do (
 
 set DEBUG=%DEBUG:"=%
 set VERBOSE=%VERBOSE:"=%
-set FULLSCREEN=%FULLSCREEN:"=%
 
 gcc ^
     !DEBUG! ^
     !VERBOSE! ^
-    !FULLSCREEN! ^
     -o ./build/deathbird.exe ^
     ./src/main.c ^
     -O0 ^

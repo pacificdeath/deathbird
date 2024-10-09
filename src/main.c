@@ -26,8 +26,6 @@ Vector2 vec2_normalized(float x, float y) {
 }
 
 void update_state_dimensions(State *state, int w, int h) {
-    state->screen_width = w;
-    state->screen_height = h;
     float padding_w;
     float padding_h;
     float ratio_unit;
@@ -53,11 +51,33 @@ void update_state_dimensions(State *state, int w, int h) {
     state->game_center_y = lroundf(half_padding_h + (state->game_height / 2));
 }
 
+void update_state_dimensions_window(State *state, int w, int h) {
+    state->window_width = w;
+    state->window_height = h;
+    update_state_dimensions(state, w, h);
+}
+
+void toggle_state_dimensions_fullscreen(State *state) {
+    if (IsWindowFullscreen()) {
+        ToggleFullscreen();
+        SetWindowSize(state->window_width, state->window_height);
+        update_state_dimensions(state, state->window_width, state->window_height);
+    }
+    else {
+        int monitor = GetCurrentMonitor();
+        int w = GetMonitorWidth(monitor);
+        int h = GetMonitorHeight(monitor);
+        ToggleFullscreen();
+        SetWindowSize(w, h);
+        update_state_dimensions(state, w, h);
+    }
+}
+
 int catch_window_resize(State *state) {
     int w = GetScreenWidth();
     int h = GetScreenHeight();
-    if (state->screen_width != w || state->screen_height != h) {
-        update_state_dimensions(state, w, h);
+    if (state->window_width != w || state->window_height != h) {
+        update_state_dimensions_window(state, w, h);
         return 1;
     }
     return 0;
@@ -68,7 +88,7 @@ int main(void) {
     {
         int window_min_width = LEVEL_ENV_TEX_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
         int window_min_height = LEVEL_ENV_TEX_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
-        update_state_dimensions(state, window_min_width, window_min_height);
+        update_state_dimensions_window(state, window_min_width, window_min_height);
 
         SetTraceLogLevel(
             #ifdef VERBOSE
@@ -78,14 +98,8 @@ int main(void) {
             #endif
         );
         SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-        InitWindow(state->screen_width, state->screen_height, "Deathbird");
+        InitWindow(state->window_width, state->window_height, "Deathbird");
         SetWindowMinSize(window_min_width, window_min_height);
-#ifdef FULLSCREEN
-        int display = GetCurrentMonitor();
-        SetWindowSize(GetMonitorWidth(display), GetMonitorHeight(display));
-        ToggleFullscreen();
-        catch_window_resize(state);
-#endif
         SetTargetFPS(60);
 
         InitAudioDevice();
@@ -106,27 +120,27 @@ int main(void) {
     bird_computer_init(state);
     bird_computer_level_setup(state);
 
-    int skip_frame = 0;
+    int skip_frames = 0;
     while (!WindowShouldClose()) {
-        if (skip_frame) {
-            skip_frame = 0;
+        printf("%i\n", IsWindowState(FLAG_WINDOW_MOUSE_PASSTHROUGH));
+        if (skip_frames > 0) {
+            skip_frames--;
+            dbgf(GetFrameTime());
+            BeginDrawing();
+            DrawRectangle(0, 0, state->window_width, state->window_height, BLACK);
+            EndDrawing();
             continue;
         }
         state->delta_time = GetFrameTime();
         if (IsWindowResized()) {
-            update_state_dimensions(state, GetScreenWidth(), GetScreenHeight());
-            skip_frame = 1;
-            BeginDrawing();
-            DrawRectangle(0, 0, state->screen_width, state->screen_height, BLACK);
-            EndDrawing();
+            update_state_dimensions_window(state, GetScreenWidth(), GetScreenHeight());
+            skip_frames = 2;
+            continue;
         }
-
-        if (IsKeyPressed(KEY_C)) {
-            if (state->game_state == GAME_STATE_DEATHBIRD) {
-                state->game_state = GAME_STATE_BIRD_COMPUTER;
-            } else {
-                state->game_state = GAME_STATE_DEATHBIRD;
-            }
+        if (IsKeyPressed(KEY_ENTER) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))) {
+            toggle_state_dimensions_fullscreen(state);
+            skip_frames = 2;
+            continue;
         }
 
         switch (state->game_state) {

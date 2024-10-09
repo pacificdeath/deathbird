@@ -222,7 +222,7 @@ void bird_computer_render(State *state) {
     DrawRectangle(state->game_left, state->game_top, state->game_width, state->game_height, BIRD_COMPUTER_BG_COLOR);
     Rectangle rec = {
         .x = state->game_left,
-        .y = dimensions.header_size,
+        .y = state->game_top + dimensions.header_size,
         .width = state->game_width / 2,
         .height = dimensions.line_section_size
     };

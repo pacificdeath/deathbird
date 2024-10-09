@@ -296,8 +296,8 @@ typedef struct Fader {
 } Fader;
 
 typedef struct State {
-    uint screen_width;
-    uint screen_height;
+    uint window_width;
+    uint window_height;
 
     Game_State game_state;
     uint game_width;
