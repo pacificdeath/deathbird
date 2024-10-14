@@ -2,6 +2,30 @@
 #include "raylib.h"
 #include "main.h"
 
+static void handle_input(State *state) {
+    Player *player = &state->player;
+    if (IsKeyPressed(KEY_LEFT)) {
+        player->current_input_key = KEY_LEFT;
+    } else if (!IsKeyDown(KEY_LEFT) && player->current_input_key == KEY_LEFT) {
+        player->current_input_key = 0;
+    }
+    if (IsKeyPressed(KEY_RIGHT)) {
+        player->current_input_key = KEY_RIGHT;
+    } else if (!IsKeyDown(KEY_RIGHT) && player->current_input_key == KEY_RIGHT) {
+        player->current_input_key = 0;
+    }
+    switch (player->current_input_key) {
+    case KEY_LEFT: {
+        player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        player->rotation -= PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
+    } break;
+    case KEY_RIGHT: {
+        player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        player->rotation += PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
+    } break;
+    }
+}
+
 static void handle_score(State *state) {
     Player *player = &state->player;
     player->state = PLAYER_STATE_GROUNDED;
@@ -26,53 +50,50 @@ static void handle_score(State *state) {
 }
 
 void player_level_setup(State *state) {
-    state->player.damage = 10;
-    state->player.state = PLAYER_STATE_GROUNDED;
-    state->player.position.x = 0.0f;
-    state->player.position.y = GAME_GROUND_Y;
-    state->player.level_score = 0;
+    Player *player = &state->player;
+    player->damage = 10;
+    player->state = PLAYER_STATE_NONE;
+    player->position.x = 0.0f;
+    player->position.y = 0.0f;
+    player->level_score = 0;
     for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
-        state->player.obliterated_birds[i] = 0;
+        player->obliterated_birds[i] = 0;
     }
-    state->player.bird_multiplier = 0;
-    state->player.bird_multiplier_timer = 0.0f;
+    player->bird_multiplier = 0;
+    player->bird_multiplier_timer = 0.0f;
     for (int i = 0; i < BIRD_COMPUTER_LINE_COUNT - 1; i++) {
-        state->player.highest_multipliers[i] = 0;
+        player->highest_multipliers[i] = 0;
     }
 }
 
 void player_update(State *state) {
-    bool down_arrow_hold = IsKeyDown(KEY_DOWN);
-    bool up_arrow_hold = IsKeyDown(KEY_UP);
     Player *player = &state->player;
     Bird *birds = state->birds;
-    if (IsKeyPressed(KEY_LEFT)) {
-        player->current_input_key = KEY_LEFT;
-    } else if (!IsKeyDown(KEY_LEFT) && player->current_input_key == KEY_LEFT) {
-        player->current_input_key = 0;
-    }
-    if (IsKeyPressed(KEY_RIGHT)) {
-        player->current_input_key = KEY_RIGHT;
-    } else if (!IsKeyDown(KEY_RIGHT) && player->current_input_key == KEY_RIGHT) {
-        player->current_input_key = 0;
-    }
-    switch (player->current_input_key) {
-    case KEY_LEFT: {
-        player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
-        player->rotation -= PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
+    bool down_arrow_hold = IsKeyDown(KEY_DOWN);
+    bool up_arrow_hold = IsKeyDown(KEY_UP);
+    switch (player->state) {
+    case PLAYER_STATE_NONE: break;
+    case PLAYER_STATE_PORTAL: {
+        Vector2 portal_position = {0};
+        float portal_distance = vec2_distance(portal_position, player->position);
+        float base_speed = 0.1f;
+        player->position.y -= (base_speed + (portal_distance / PORTAL_RADIUS)) * state->delta_time;
+        player->rotation -= PLAYER_ROTATION_SPEED_PORTAL * state->delta_time;
+        if (player->position.y <= GAME_GROUND_Y) {
+            player->state = PLAYER_STATE_GROUNDED;
+        }
     } break;
-    case KEY_RIGHT: {
-        player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
-        player->rotation += PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
-    } break;
-    }
-    if (player->state == PLAYER_STATE_GROUNDED) {
+    case PLAYER_STATE_GROUNDED: {
+        handle_input(state);
         player->position.y = GAME_GROUND_Y;
         player->rotation += PLAYER_ROTATION_SPEED_GROUND * state->delta_time;
         if (up_arrow_hold) {
             player->state = PLAYER_STATE_UP;
         }
-    } else {
+    } break;
+    case PLAYER_STATE_UP:
+    case PLAYER_STATE_DOWN: {
+        handle_input(state);
         int dir = player->state == PLAYER_STATE_UP ? 1 : -1;
         player->position.y += dir * PLAYER_VERTICAL_SPEED * state->delta_time;
         player->rotation += PLAYER_ROTATION_SPEED_AIR * state->delta_time;
@@ -115,6 +136,7 @@ void player_update(State *state) {
                 }
             }
         }
+    } break;
     }
     if (state->player.bird_multiplier_timer > 0.0f) {
         state->player.bird_multiplier_timer -= state->delta_time;
@@ -126,5 +148,37 @@ bool player_ready_for_exit(State *state) {
 }
 
 void player_render(State *state) {
-    tex_atlas_draw(state, TEX_PLAYER_2, state->player.position, state->player.rotation, OPAQUE);
+    tex_atlas_draw(
+        state,
+        TEX_PLAYER_2,
+        state->player.position,
+        state->player.rotation,
+        1.0f,
+        OPAQUE
+    );
+}
+
+void player_render_with_portal(State *state) {
+    Vector2 portal_position = {0};
+    float portal_distance = vec2_distance(portal_position, state->player.position);
+    float scale;
+    Color color;
+    float portal_radius = PORTAL_RADIUS * GAME_HEIGHT_RATIO;
+    if (portal_distance < portal_radius) {
+        float x = portal_distance / portal_radius;
+        scale = x * 1.0f;
+        float c = x * 255.0f;
+        color = (Color) {c,c,c,255};
+    } else {
+        scale = 1.0f;
+        color = OPAQUE;
+    }
+    tex_atlas_draw(
+        state,
+        TEX_PLAYER_2,
+        state->player.position,
+        state->player.rotation,
+        scale,
+        color
+    );
 }

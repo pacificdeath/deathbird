@@ -28,20 +28,21 @@ void tex_atlas_init(State *state) {
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
     add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
     add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 3, true);
+    add_texture_offsets(state, &x, &y, TEX_DUMB, 1, 1, true);
 }
 
 void tex_atlas_cleanup(State *state) {
     UnloadTexture(state->tex_atlas);
 }
 
-void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity) {
+void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color) {
     Rectangle source = {
         .x = state->tex_atlas_offsets[tex].x,
         .y = state->tex_atlas_offsets[tex].y,
         .width = state->tex_atlas_offsets[tex].size,
         .height = state->tex_atlas_offsets[tex].size,
     };
-    int render_scale = state->tex_atlas_offsets[tex].size * state->scale_multiplier;
+    int render_scale = state->tex_atlas_offsets[tex].size * state->scale_multiplier * scale;
     Rectangle dest = {
         .x = state->game_center_x + (position.x * (state->game_width / 2)),
         .y = state->game_center_y - (position.y * (state->game_height / 2)),
@@ -49,7 +50,7 @@ void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, uns
         .height = render_scale,
     };
     Vector2 origin = { render_scale / 2.0f, render_scale / 2.0f };
-    DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, (Color){ 255, 255, 255, opacity});
+    DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, color);
 }
 
 void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale) {

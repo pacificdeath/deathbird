@@ -5,7 +5,7 @@
 
 #define GAME_WIDTH_RATIO 3.0f
 #define GAME_HEIGHT_RATIO 2.0f
-#define GAME_MIN_SIZE 2
+#define GAME_MIN_SIZE 3
 #define GAME_GROUND_Y -0.87f
 #define GAME_CEILING_Y 0.97f
 #define GAME_OUT_OF_BOUNDS_COLOR BLACK
@@ -35,6 +35,7 @@
 #define PLAYER_HORIZONTAL_SPEED 2.0f
 #define PLAYER_ROTATION_SPEED_GROUND -450.0f
 #define PLAYER_ROTATION_SPEED_GROUND_MOVEMENT 1200.0f
+#define PLAYER_ROTATION_SPEED_PORTAL 1000.0f
 #define PLAYER_ROTATION_SPEED_AIR 2500.0f
 #define PLAYER_SMALLEST_VALID_MULTIPLIER 2
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
@@ -77,7 +78,12 @@
 #define FADER_MIN 0
 #define FADER_SPEED 500.0f
 
-#define OPAQUE 255
+#define PORTAL_RADIUS 0.3f
+#define PORTAL_APPEAR_SPEED 2.0f
+#define PORTAL_DISAPPEAR_SPEED PORTAL_APPEAR_SPEED
+#define PORTAL_EXHALE_RATE 0.1f
+
+#define OPAQUE (Color){255,255,255,255}
 #define DEATH_SOUND_AMOUNT 8
 
 #ifdef DEBUG
@@ -96,15 +102,6 @@ typedef short int16;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint;
-
-typedef enum Game_State {
-    GAME_STATE_BIRD_COMPUTER = 0,
-    GAME_STATE_BIRD_COMPUTER_FADE_OUT,
-    GAME_STATE_DEATHBIRD_FADE_IN,
-    GAME_STATE_DEATHBIRD,
-    GAME_STATE_DEATHBIRD_FADE_OUT,
-    GAME_STATE_BIRD_COMPUTER_FADE_IN,
-} Game_State;
 
 typedef enum Tex {
     TEX_ENV_NIGHT_SKY,
@@ -158,58 +155,9 @@ typedef enum Tex {
     TEX_PLAYER_1,
     TEX_PLAYER_2,
     TEX_PLAYER_3,
+    TEX_DUMB,
     TEX_TOTAL,
 } Tex;
-
-typedef enum Level_Environment {
-    LEVEL_ENVIRONMENT_NONE = 0,
-    LEVEL_ENVIRONMENT_FOREST,
-    LEVEL_ENVIRONMENT_MEADOWS,
-    LEVEL_ENVIRONMENT_MOUNTAINS,
-    LEVEL_ENVIRONMENT_TOTAL,
-} Level_Environment;
-
-typedef enum Player_State {
-    PLAYER_STATE_GROUNDED,
-    PLAYER_STATE_UP,
-    PLAYER_STATE_DOWN,
-} Player_State;
-
-typedef enum Bird_State {
-    BIRD_STATE_AVAILABLE,
-    BIRD_STATE_ALIVE,
-    BIRD_STATE_DEAD,
-} Bird_State;
-
-typedef enum Bird_Type {
-    BIRD_TYPE_NONE,
-    BIRD_TYPE_WHITE,
-    BIRD_TYPE_GIANT,
-    BIRD_TYPE_YELLOW,
-    BIRD_TYPE_BROWN,
-    BIRD_TYPES_TOTAL,
-} Bird_Type;
-
-typedef enum Bird_Computer_State {
-    BIRD_COMPUTER_STATE_DEFAULT,
-    BIRD_COMPUTER_STATE_SHOP,
-    BIRD_COMPUTER_STATE_INFO_BOX,
-} Bird_Computer_State;
-
-typedef enum Shop_Item_Type {
-    SHOP_ITEM_SIMPLE,
-    SHOP_ITEM_PLAYABLE_1,
-    SHOP_ITEM_PLAYABLE_2,
-    SHOP_ITEM_PLAYABLE_3,
-} Shop_Item_Type;
-
-typedef enum Fader_State {
-    FADER_STATE_NONE = 0,
-    FADER_STATE_IN,
-    FADER_STATE_IN_COMPLETE,
-    FADER_STATE_OUT,
-    FADER_STATE_OUT_COMPLETE,
-} Fader_State;
 
 typedef struct Tex_Atlas_Offset {
     int16 x;
@@ -227,6 +175,14 @@ typedef struct Scroll_Env {
     uint8 opacity;
 } Scroll_Env;
 
+typedef enum Level_Environment {
+    LEVEL_ENVIRONMENT_NONE = 0,
+    LEVEL_ENVIRONMENT_FOREST,
+    LEVEL_ENVIRONMENT_MEADOWS,
+    LEVEL_ENVIRONMENT_MOUNTAINS,
+    LEVEL_ENVIRONMENT_TOTAL,
+} Level_Environment;
+
 typedef struct Level_Data {
     Level_Environment environment;
     uint8 scroll_env_amount;
@@ -238,6 +194,23 @@ typedef struct Level_Data {
     uint spawned_birds;
     uint passed_birds;
 } Level_Data;
+
+typedef enum Player_State {
+    PLAYER_STATE_NONE = 0,
+    PLAYER_STATE_PORTAL,
+    PLAYER_STATE_GROUNDED,
+    PLAYER_STATE_UP,
+    PLAYER_STATE_DOWN,
+} Player_State;
+
+typedef enum Bird_Type {
+    BIRD_TYPE_NONE,
+    BIRD_TYPE_WHITE,
+    BIRD_TYPE_GIANT,
+    BIRD_TYPE_YELLOW,
+    BIRD_TYPE_BROWN,
+    BIRD_TYPES_TOTAL,
+} Bird_Type;
 
 typedef struct Player {
     Player_State state;
@@ -271,6 +244,12 @@ typedef struct Bird_Dead {
     float death_rotations[BIRD_DEATH_PARTS];
 } Bird_Dead;
 
+typedef enum Bird_State {
+    BIRD_STATE_AVAILABLE,
+    BIRD_STATE_ALIVE,
+    BIRD_STATE_DEAD,
+} Bird_State;
+
 typedef struct Bird {
     Bird_Type type;
     Bird_State state;
@@ -280,6 +259,12 @@ typedef struct Bird {
         Bird_Dead dead;
     };
 } Bird;
+
+typedef enum Bird_Computer_State {
+    BIRD_COMPUTER_STATE_DEFAULT,
+    BIRD_COMPUTER_STATE_SHOP,
+    BIRD_COMPUTER_STATE_INFO_BOX,
+} Bird_Computer_State;
 
 typedef struct Bird_Computer_Dimensions {
     float font_size;
@@ -303,16 +288,77 @@ typedef struct Bird_Computer {
     uint16 discovered_levels;
 } Bird_Computer;
 
+typedef enum Fader_State {
+    FADER_STATE_NONE = 0,
+    FADER_STATE_IN,
+    FADER_STATE_IN_COMPLETE,
+    FADER_STATE_OUT,
+    FADER_STATE_OUT_COMPLETE,
+} Fader_State;
+
+
 typedef struct Fader {
     Fader_State state;
     float fade_level;
 } Fader;
 
+typedef enum Portal_Bits {
+    PORTAL_BIT_NONE = 0,
+    PORTAL_BIT_REVERSED = 1 << 0,
+    PORTAL_BIT_RED = 1 << 1,
+    PORTAL_BIT_GREEN = 1 << 2,
+    PORTAL_BIT_BLUE = 1 << 3,
+    PORTAL_BIT_YELLOW = (
+        PORTAL_BIT_RED |
+        PORTAL_BIT_GREEN
+    ),
+    PORTAL_BIT_CYAN = (
+        PORTAL_BIT_GREEN |
+        PORTAL_BIT_BLUE
+    ),
+    PORTAL_BIT_MAGENTA = (
+        PORTAL_BIT_BLUE |
+        PORTAL_BIT_RED
+    ),
+    PORTAL_BIT_WHITE = (
+        PORTAL_BIT_RED |
+        PORTAL_BIT_GREEN |
+        PORTAL_BIT_BLUE
+    )
+} Portal_Bits;
+
+typedef struct Portal {
+    Portal_Bits flags;
+    Shader shader;
+    Texture texture;
+    float linear_disappearance;
+    float smooth_disappearance;
+    Color color;
+    float timer;
+    uint8 item_idx;
+} Portal;
+
+typedef enum World_State {
+    WORLD_STATE_MENU = 0,
+    WORLD_STATE_MENU_FADE_OUT,
+    WORLD_STATE_GAME_FADE_IN,
+    WORLD_STATE_PRE_GAME_PORTAL_IN,
+    WORLD_STATE_PRE_GAME_PORTAL_EXHALE,
+    WORLD_STATE_PRE_GAME_PORTAL_OUT,
+    WORLD_STATE_GAME,
+    WORLD_STATE_POST_GAME_PORTAL_IN,
+    WORLD_STATE_POST_GAME_PORTAL_INHALE,
+    WORLD_STATE_POST_GAME_PORTAL_OUT,
+    WORLD_STATE_GAME_FADE_OUT,
+    WORLD_STATE_MENU_FADE_IN,
+} World_State;
+
+
 typedef struct State {
     uint window_width;
     uint window_height;
 
-    Game_State game_state;
+    World_State world_state;
     uint game_width;
     uint game_height;
     uint game_left;
@@ -341,15 +387,18 @@ typedef struct State {
     uint birds_in_use;
 
     Fader fader;
+    Portal portal;
 
     float scale_multiplier;
     float delta_time;
 } State;
 
+bool has_flag(int flags, int flag);
 float randf(float min, float max);
 Vector2 vec2_normalized(float x, float y);
+float vec2_distance(Vector2 a, Vector2 b);
 void tex_atlas_init(State *state);
-void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, unsigned char opacity);
+void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color);
 bool bird_try_destroy(State *state, Bird *bird, Vector2 from);
 
 #endif

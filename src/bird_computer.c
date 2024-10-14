@@ -194,7 +194,7 @@ void bird_computer_update(State *state) {
             ) {
                 bird_computer->state = BIRD_COMPUTER_STATE_INFO_BOX;
             } else if (option_idx_with_offset == bird_computer->option_idx_continue) {
-                state->game_state = GAME_STATE_BIRD_COMPUTER_FADE_OUT;
+                state->world_state = WORLD_STATE_MENU_FADE_OUT;
             }
         } break;
         case BIRD_COMPUTER_STATE_INFO_BOX: {
@@ -296,8 +296,8 @@ void bird_computer_render(State *state) {
                                 bool is_map_location = cell_idx == (state->next_level_data.environment - 1);
                                 Tex tex;
                                 int tex_amount = 0;
-                                uint16 discovered_level_bits = (1 << cell_idx);
-                                if ((bird_computer->discovered_levels & discovered_level_bits) == discovered_level_bits) {
+                                uint16 discovered_level_bit = (1 << cell_idx);
+                                if (has_flag(bird_computer->discovered_levels, discovered_level_bit)) {
                                     switch (cell_idx) {
                                     case 0: {
                                         tex = TEX_ENV_NIGHT_SKY;

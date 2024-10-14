@@ -8,6 +8,11 @@
 #include "bird.c"
 #include "bird_computer.c"
 #include "fader.c"
+#include "portal.c"
+
+bool has_flag(int flags, int flag) {
+    return (flags & flag) == flag;
+}
 
 float randf(float min, float max) {
     float resolution = 999999.999f;
@@ -23,6 +28,12 @@ Vector2 vec2_normalized(float x, float y) {
     y /= w;
     Vector2 result = { x, y };
     return result;
+}
+
+float vec2_distance(Vector2 a, Vector2 b) {
+    float xd = fabs(a.x - b.x);
+    float yd = fabs(a.y - b.y);
+    return sqrtf(xd*xd + yd*yd);
 }
 
 void update_state_dimensions(State *state, int w, int h) {
@@ -62,8 +73,7 @@ void toggle_state_dimensions_fullscreen(State *state) {
         ToggleFullscreen();
         SetWindowSize(state->window_width, state->window_height);
         update_state_dimensions(state, state->window_width, state->window_height);
-    }
-    else {
+    } else {
         int monitor = GetCurrentMonitor();
         int w = GetMonitorWidth(monitor);
         int h = GetMonitorHeight(monitor);
@@ -112,13 +122,15 @@ int main(void) {
         state->sounds_death_splats[5] = LoadSound("./sounds/splat6.wav");
         state->sounds_death_splats[6] = LoadSound("./sounds/splat7.wav");
         state->sounds_death_splats[7] = LoadSound("./sounds/splat8.wav");
-    }
 
-    tex_atlas_init(state);
-    level_setup_next(state);
-    bird_init(state);
-    bird_computer_init(state);
-    bird_computer_level_setup(state);
+        tex_atlas_init(state);
+        level_setup_next(state);
+        portal_init(state);
+        bird_init(state);
+        bird_computer_init(state);
+        bird_computer_level_setup(state);
+    }
+    portal_setup(state, PORTAL_BIT_RED);
 
     int skip_frames = 0;
     while (!WindowShouldClose()) {
@@ -141,53 +153,88 @@ int main(void) {
             continue;
         }
 
-        switch (state->game_state) {
-        case GAME_STATE_BIRD_COMPUTER: {
+        switch (state->world_state) {
+        case WORLD_STATE_MENU: {
             bird_computer_update(state);
         } break;
-        case GAME_STATE_BIRD_COMPUTER_FADE_OUT: {
+        case WORLD_STATE_MENU_FADE_OUT: {
             if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
                 level_go_to_next(state);
-                player_level_setup(state);
-                bird_level_setup(state);
-                state->game_state = GAME_STATE_DEATHBIRD_FADE_IN;
+                state->world_state = WORLD_STATE_GAME_FADE_IN;
             } else {
                 fade_out(state);
             }
         } break;
-        case GAME_STATE_DEATHBIRD_FADE_IN: {
+        case WORLD_STATE_GAME_FADE_IN: {
             level_update(state);
-            player_update(state);
             if (state->fader.state == FADER_STATE_IN_COMPLETE) {
-                state->game_state = GAME_STATE_DEATHBIRD;
+                Portal_Bits portal_color_bit;
+                switch (state->current_level_data.environment) {
+                default: {
+                    portal_color_bit = PORTAL_BIT_NONE;
+                } break;
+                case LEVEL_ENVIRONMENT_FOREST: {
+                    portal_color_bit = PORTAL_BIT_GREEN;
+                } break;
+                case LEVEL_ENVIRONMENT_MEADOWS: {
+                    portal_color_bit = PORTAL_BIT_YELLOW;
+                } break;
+                case LEVEL_ENVIRONMENT_MOUNTAINS: {
+                    portal_color_bit = PORTAL_BIT_WHITE;
+                } break;
+                }
+                portal_setup(state, PORTAL_BIT_REVERSED | portal_color_bit);
+                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_IN;
             } else {
                 fade_in(state);
             }
         } break;
-        case GAME_STATE_DEATHBIRD: {
+        case WORLD_STATE_PRE_GAME_PORTAL_IN: {
+            level_update(state);
+            if (portal_appear(state)) {
+                player_level_setup(state);
+                bird_level_setup(state);
+                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_EXHALE;
+            }
+        } break;
+        case WORLD_STATE_PRE_GAME_PORTAL_EXHALE: {
+            level_update(state);
+            player_update(state);
+            if (portal_exhale(state)) {
+                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_OUT;
+            }
+        } break;
+        case WORLD_STATE_PRE_GAME_PORTAL_OUT: {
+            level_update(state);
+            player_update(state);
+            if (portal_disappear(state)) {
+                state->world_state = WORLD_STATE_GAME;
+            }
+        } break;
+        case WORLD_STATE_GAME: {
             level_update(state);
             // player must be updated before birds because it can change the
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
             if (birds_ready_for_exit(state) && player_ready_for_exit(state)) {
-                state->game_state = GAME_STATE_DEATHBIRD_FADE_OUT;
+                state->world_state = WORLD_STATE_GAME_FADE_OUT;
             }
         } break;
-        case GAME_STATE_DEATHBIRD_FADE_OUT: {
+        case WORLD_STATE_GAME_FADE_OUT: {
             level_update(state);
             player_update(state);
             if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
                 level_setup_next(state);
                 bird_computer_level_setup(state);
-                state->game_state = GAME_STATE_BIRD_COMPUTER_FADE_IN;
+                state->world_state = WORLD_STATE_MENU_FADE_IN;
             } else {
                 fade_out(state);
             }
         } break;
-        case GAME_STATE_BIRD_COMPUTER_FADE_IN: {
+        case WORLD_STATE_MENU_FADE_IN: {
             if (state->fader.state == FADER_STATE_IN_COMPLETE) {
-                state->game_state = GAME_STATE_BIRD_COMPUTER;
+                state->world_state = WORLD_STATE_MENU;
             } else {
                 fade_in(state);
             }
@@ -198,24 +245,34 @@ int main(void) {
 
         ClearBackground(GAME_OUT_OF_BOUNDS_COLOR);
 
-        switch (state->game_state) {
-        case GAME_STATE_DEATHBIRD_FADE_IN:
-        case GAME_STATE_DEATHBIRD:
-        case GAME_STATE_DEATHBIRD_FADE_OUT: {
+        switch (state->world_state) {
+        case WORLD_STATE_MENU_FADE_IN:
+        case WORLD_STATE_MENU_FADE_OUT: {
+            bird_computer_render(state);
+            fader_render(state);
+        } break;
+        case WORLD_STATE_MENU: {
+            bird_computer_render(state);
+        } break;
+        case WORLD_STATE_GAME_FADE_IN:
+        case WORLD_STATE_GAME_FADE_OUT: {
+            level_render(state);
+            fader_render(state);
+        } break;
+        case WORLD_STATE_PRE_GAME_PORTAL_IN: {
+            level_render(state);
+            portal_render(state);
+        } break;
+        case WORLD_STATE_PRE_GAME_PORTAL_EXHALE:
+        case WORLD_STATE_PRE_GAME_PORTAL_OUT: {
+            level_render(state);
+            portal_render(state);
+            player_render_with_portal(state);
+        } break;
+        case WORLD_STATE_GAME: {
             level_render(state);
             birds_render(state);
             player_render(state);
-            if (state->game_state != GAME_STATE_DEATHBIRD) {
-                fader_render(state);
-            }
-        } break;
-        case GAME_STATE_BIRD_COMPUTER_FADE_IN:
-        case GAME_STATE_BIRD_COMPUTER:
-        case GAME_STATE_BIRD_COMPUTER_FADE_OUT: {
-            bird_computer_render(state);
-            if (state->game_state != GAME_STATE_BIRD_COMPUTER) {
-                fader_render(state);
-            }
         } break;
         }
 
@@ -234,6 +291,7 @@ int main(void) {
     tex_atlas_cleanup(state);
     bird_cleanup(state);
     bird_computer_cleanup(state);
+    portal_cleanup(state);
 
     for (int i = 0; i < DEATH_SOUND_AMOUNT; i++) {
         UnloadSound(state->sounds_death_splats[i]);

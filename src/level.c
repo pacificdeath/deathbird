@@ -27,28 +27,28 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
         scroll_envs[0].horizontal_speed = -0.03f;
         scroll_envs[0].vertical_textures = 2;
         scroll_envs[0].vertical_speed = 0.0f;
-        scroll_envs[0].opacity = OPAQUE;
+        scroll_envs[0].opacity = 255;
 
         scroll_envs[1].tex = TEX_ENV_OCEAN,
         scroll_envs[1].horizontal_textures = 4,
         scroll_envs[1].horizontal_speed = 0.03f,
         scroll_envs[1].vertical_textures = 1,
         scroll_envs[1].vertical_speed = 0.0f;
-        scroll_envs[1].opacity = OPAQUE;
+        scroll_envs[1].opacity = 255;
 
         scroll_envs[2].tex = TEX_ENV_HILLS;
         scroll_envs[2].horizontal_textures = 4;
         scroll_envs[2].horizontal_speed = 0.15f;
         scroll_envs[2].vertical_textures = 1;
         scroll_envs[2].vertical_speed = 0.0f;
-        scroll_envs[2].opacity = OPAQUE;
+        scroll_envs[2].opacity = 255;
 
         scroll_envs[3].tex = TEX_ENV_TREES;
         scroll_envs[3].horizontal_textures = 4;
         scroll_envs[3].horizontal_speed = 0.75f;
         scroll_envs[3].vertical_textures = 1;
         scroll_envs[3].vertical_speed = 0.0f;
-        scroll_envs[3].opacity = OPAQUE;
+        scroll_envs[3].opacity = 255;
 
         scroll_env_amount = 4;
     } break;
@@ -58,28 +58,28 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
         scroll_envs[0].horizontal_speed = -0.03f;
         scroll_envs[0].vertical_textures = 2;
         scroll_envs[0].vertical_speed = 0.0f;
-        scroll_envs[0].opacity = OPAQUE;
+        scroll_envs[0].opacity = 255;
 
         scroll_envs[1].tex = TEX_ENV_CLOUDS;
         scroll_envs[1].horizontal_textures = 4;
         scroll_envs[1].horizontal_speed = 0.03f;
         scroll_envs[1].vertical_textures = 1;
         scroll_envs[1].vertical_speed = 0.0f;
-        scroll_envs[1].opacity = OPAQUE;
+        scroll_envs[1].opacity = 255;
 
         scroll_envs[2].tex = TEX_ENV_MEADOWS;
         scroll_envs[2].horizontal_textures = 4;
         scroll_envs[2].horizontal_speed = 0.15f;
         scroll_envs[2].vertical_textures = 1;
         scroll_envs[2].vertical_speed = 0.0f;
-        scroll_envs[2].opacity = OPAQUE;
+        scroll_envs[2].opacity = 255;
 
         scroll_envs[3].tex = TEX_ENV_FENCE;
         scroll_envs[3].horizontal_textures = 4;
         scroll_envs[3].horizontal_speed = 0.75f;
         scroll_envs[3].vertical_textures = 1;
         scroll_envs[3].vertical_speed = 0.0f;
-        scroll_envs[3].opacity = OPAQUE;
+        scroll_envs[3].opacity = 255;
 
         scroll_env_amount = 4;
     } break;
@@ -89,28 +89,28 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
         scroll_envs[0].horizontal_speed = -0.03f;
         scroll_envs[0].vertical_textures = 2;
         scroll_envs[0].vertical_speed = 0.0f;
-        scroll_envs[0].opacity = OPAQUE;
+        scroll_envs[0].opacity = 255;
 
         scroll_envs[1].tex = TEX_ENV_MOUNTAINS;
         scroll_envs[1].horizontal_textures = 4;
         scroll_envs[1].horizontal_speed = 0.03f;
         scroll_envs[1].vertical_textures = 1;
         scroll_envs[1].vertical_speed = 0.0f;
-        scroll_envs[1].opacity = OPAQUE;
+        scroll_envs[1].opacity = 255;
 
         scroll_envs[2].tex = TEX_ENV_WINTER_HILLS;
         scroll_envs[2].horizontal_textures = 4;
         scroll_envs[2].horizontal_speed = 0.15f;
         scroll_envs[2].vertical_textures = 1;
         scroll_envs[2].vertical_speed = 0.0f;
-        scroll_envs[2].opacity = OPAQUE;
+        scroll_envs[2].opacity = 255;
 
         scroll_envs[3].tex = TEX_ENV_WINTER_TREES;
         scroll_envs[3].horizontal_textures = 4;
         scroll_envs[3].horizontal_speed = 0.75f;
         scroll_envs[3].vertical_textures = 1;
         scroll_envs[3].vertical_speed = 0.0f;
-        scroll_envs[3].opacity = OPAQUE;
+        scroll_envs[3].opacity = 255;
 
         scroll_envs[4].tex = TEX_ENV_SNOW;
         scroll_envs[4].horizontal_textures = 4;
@@ -210,7 +210,8 @@ void level_render(State *state) {
                     tex_offset.x + scroll_envs[i].scroll.x + (tex_size.x * x),
                     tex_offset.y + scroll_envs[i].scroll.y + (tex_size.y * y)
                 };
-                tex_atlas_draw(state, scroll_envs[i].tex, position, 0.0f, scroll_envs[i].opacity);
+                Color color = {255,255,255,scroll_envs[i].opacity};
+                tex_atlas_draw(state, scroll_envs[i].tex, position, 0.0f, 1.0f, color);
             }
         }
     }

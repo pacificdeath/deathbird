@@ -205,17 +205,17 @@ void birds_render(State *state) {
             }
             if (alive_bird->damage_timer > 0.0f) {
                 BeginShaderMode(state->bird_damage_shader);
-                tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, OPAQUE);
+                tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, 1.0f, OPAQUE);
                 EndShaderMode();
             } else {
-                tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, OPAQUE);
+                tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, 1.0f, OPAQUE);
             }
         } break;
         case BIRD_STATE_DEAD: {
             Bird_Dead *dead_bird = &birds[i].dead;
             if (dead_bird->blood_idx < BIRD_BLOOD_TEX_AMOUNT) {
                 Tex blood_tex = TEX_BIRD_BLOOD_1 + dead_bird->blood_idx;
-                tex_atlas_draw(state, blood_tex, birds[i].position, 0.0f, OPAQUE);
+                tex_atlas_draw(state, blood_tex, birds[i].position, 0.0f, 1.0f, OPAQUE);
             }
             Tex textures[BIRD_DEATH_PARTS];
             // in order of rendering
@@ -263,7 +263,7 @@ void birds_render(State *state) {
             for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
                 Tex tex = textures[j];
                 float rotation = dead_bird->death_rotations[j];
-                tex_atlas_draw(state, tex, dead_bird->death_positions[j], rotation, OPAQUE);
+                tex_atlas_draw(state, tex, dead_bird->death_positions[j], rotation, 1.0f, OPAQUE);
             }
         } break;
         }
