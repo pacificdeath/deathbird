@@ -16,10 +16,10 @@ static Vector2 env_tex_offset(Vector2 tex_size) {
     };
 }
 
-static int scroll_env_level_setup(State *state, Level_Environment environment) {
+static int scroll_env_current_level_setup(State *state) {
     Scroll_Env *scroll_envs = state->scroll_envs;
     int scroll_env_amount = 0;
-    switch (environment) {
+    switch (state->current_level_data.environment) {
     default: break;
     case LEVEL_ENVIRONMENT_FOREST: {
         scroll_envs[0].tex = TEX_ENV_NIGHT_SKY;
@@ -129,6 +129,10 @@ static int scroll_env_level_setup(State *state, Level_Environment environment) {
     return scroll_env_amount;
 }
 
+bool level_score_reached(State *state) {
+    return state->player.level_score >= state->current_level_data.required_score;
+}
+
 void level_setup_next(State *state) {
     Level_Environment environment;
     switch (state->current_level_data.environment) {
@@ -149,7 +153,6 @@ void level_setup_next(State *state) {
     int next_round = state->current_round + 1;
 
     state->next_level_data.environment = environment;
-    state->next_level_data.scroll_env_amount = scroll_env_level_setup(state, environment);
 
     int extra_birds = next_round * LEVEL_BIRD_AMOUNT_MULTIPLIER;
     int extra_birds_random = GetRandomValue(LEVEL_MIN_RANDOM_BIRD_AMOUNT, LEVEL_MAX_RANDOM_BIRD_AMOUNT);
@@ -175,6 +178,7 @@ void level_setup_next(State *state) {
 void level_go_to_next(State *state) {
     state->current_round++;
     state->current_level_data = state->next_level_data;
+    state->current_level_data.scroll_env_amount = scroll_env_current_level_setup(state);
 }
 
 void level_update(State *state) {
@@ -230,13 +234,13 @@ void level_render(State *state) {
         .x = state->game_width / 2,
         .y = state->game_height / 20,
     };
-    if (state->player.level_score < state->current_level_data.required_score) {
+    if (level_score_reached(state)) {
+        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_REACHED_FG_COLOR);
+    } else {
         DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_BG_COLOR);
         float player_relative_score = (float)state->player.level_score / (float)state->current_level_data.required_score;
         score_bar_size.x = score_bar_size.x * player_relative_score;
         DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_NOT_REACHED_FG_COLOR);
-    } else {
-        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_REACHED_FG_COLOR);
     }
     sprintf(buffer, "%i / %i", state->player.level_score, state->current_level_data.required_score);
     Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);

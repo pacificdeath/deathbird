@@ -24,16 +24,27 @@ float randf(float min, float max) {
 
 Vector2 vec2_normalized(float x, float y) {
     float w = sqrt((x * x) + (y * y));
-    x /= w;
-    y /= w;
-    Vector2 result = { x, y };
+    if (w == 0) {
+        return (Vector2){0};
+    }
+    Vector2 result = {
+        x /= w,
+        y /= w
+    };
     return result;
 }
 
+Vector2 vec2_direction(Vector2 from, Vector2 to) {
+    return (Vector2) {
+        .x = to.x - from.x,
+        .y = to.y - from.y
+    };
+}
+
 float vec2_distance(Vector2 a, Vector2 b) {
-    float xd = fabs(a.x - b.x);
-    float yd = fabs(a.y - b.y);
-    return sqrtf(xd*xd + yd*yd);
+    float x = fabs(a.x - b.x);
+    float y = fabs(a.y - b.y);
+    return sqrtf(x*x + y*y);
 }
 
 void update_state_dimensions(State *state, int w, int h) {
@@ -160,6 +171,7 @@ int main(void) {
         case WORLD_STATE_MENU_FADE_OUT: {
             if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
                 level_go_to_next(state);
+                player_level_setup(state);
                 state->world_state = WORLD_STATE_GAME_FADE_IN;
             } else {
                 fade_out(state);
@@ -168,43 +180,30 @@ int main(void) {
         case WORLD_STATE_GAME_FADE_IN: {
             level_update(state);
             if (state->fader.state == FADER_STATE_IN_COMPLETE) {
-                Portal_Bits portal_color_bit;
-                switch (state->current_level_data.environment) {
-                default: {
-                    portal_color_bit = PORTAL_BIT_NONE;
-                } break;
-                case LEVEL_ENVIRONMENT_FOREST: {
-                    portal_color_bit = PORTAL_BIT_GREEN;
-                } break;
-                case LEVEL_ENVIRONMENT_MEADOWS: {
-                    portal_color_bit = PORTAL_BIT_YELLOW;
-                } break;
-                case LEVEL_ENVIRONMENT_MOUNTAINS: {
-                    portal_color_bit = PORTAL_BIT_WHITE;
-                } break;
-                }
-                portal_setup(state, PORTAL_BIT_REVERSED | portal_color_bit);
-                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_IN;
+                Portal_Bits portal_color_bit = portal_env_color(state->current_level_data.environment);
+                portal_setup(state, PORTAL_BIT_EXHALE | portal_color_bit);
+                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_APPEAR;
             } else {
                 fade_in(state);
             }
         } break;
-        case WORLD_STATE_PRE_GAME_PORTAL_IN: {
+        case WORLD_STATE_PRE_GAME_PORTAL_APPEAR: {
             level_update(state);
             if (portal_appear(state)) {
-                player_level_setup(state);
-                bird_level_setup(state);
+                state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
                 state->world_state = WORLD_STATE_PRE_GAME_PORTAL_EXHALE;
             }
         } break;
         case WORLD_STATE_PRE_GAME_PORTAL_EXHALE: {
             level_update(state);
             player_update(state);
+            birds_update(state);
             if (portal_exhale(state)) {
-                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_OUT;
+                bird_level_setup(state);
+                state->world_state = WORLD_STATE_PRE_GAME_PORTAL_DISAPPEAR;
             }
         } break;
-        case WORLD_STATE_PRE_GAME_PORTAL_OUT: {
+        case WORLD_STATE_PRE_GAME_PORTAL_DISAPPEAR: {
             level_update(state);
             player_update(state);
             if (portal_disappear(state)) {
@@ -217,7 +216,37 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
-            if (birds_ready_for_exit(state) && player_ready_for_exit(state)) {
+            if (level_score_reached(state)) {
+                level_setup_next(state);
+                Portal_Bits portal_color_bit = portal_env_color(state->next_level_data.environment);
+                portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
+                birds_give_alive_ones_to_portal(state);
+                state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
+                state->world_state = WORLD_STATE_POST_GAME_PORTAL_APPEAR;
+            } else if (birds_ran_out(state)) {
+                portal_setup(state, PORTAL_BIT_NONE);
+                state->world_state = WORLD_STATE_POST_GAME_PORTAL_APPEAR;
+            }
+        } break;
+        case WORLD_STATE_POST_GAME_PORTAL_APPEAR: {
+            level_update(state);
+            birds_update(state);
+            player_update(state);
+            if (portal_appear(state)) {
+                state->world_state = WORLD_STATE_POST_GAME_PORTAL_INHALE;
+            }
+        } break;
+        case WORLD_STATE_POST_GAME_PORTAL_INHALE: {
+            level_update(state);
+            player_update(state);
+            birds_update(state);
+            if (portal_inhale(state)) {
+                state->world_state = WORLD_STATE_POST_GAME_PORTAL_DISAPPEAR;
+            }
+        } break;
+        case WORLD_STATE_POST_GAME_PORTAL_DISAPPEAR: {
+            level_update(state);
+            if (portal_disappear(state)) {
                 state->world_state = WORLD_STATE_GAME_FADE_OUT;
             }
         } break;
@@ -225,7 +254,6 @@ int main(void) {
             level_update(state);
             player_update(state);
             if (state->fader.state == FADER_STATE_OUT_COMPLETE) {
-                level_setup_next(state);
                 bird_computer_level_setup(state);
                 state->world_state = WORLD_STATE_MENU_FADE_IN;
             } else {
@@ -259,15 +287,19 @@ int main(void) {
             level_render(state);
             fader_render(state);
         } break;
-        case WORLD_STATE_PRE_GAME_PORTAL_IN: {
+        case WORLD_STATE_PRE_GAME_PORTAL_APPEAR:
+        case WORLD_STATE_POST_GAME_PORTAL_DISAPPEAR: {
             level_render(state);
             portal_render(state);
         } break;
         case WORLD_STATE_PRE_GAME_PORTAL_EXHALE:
-        case WORLD_STATE_PRE_GAME_PORTAL_OUT: {
+        case WORLD_STATE_PRE_GAME_PORTAL_DISAPPEAR:
+        case WORLD_STATE_POST_GAME_PORTAL_APPEAR:
+        case WORLD_STATE_POST_GAME_PORTAL_INHALE: {
             level_render(state);
             portal_render(state);
-            player_render_with_portal(state);
+            birds_render(state);
+            player_render(state);
         } break;
         case WORLD_STATE_GAME: {
             level_render(state);

@@ -8,7 +8,7 @@ out vec4 finalColor;
 uniform vec2 resolution;
 uniform float time;
 uniform int color_id;
-uniform bool reverse;
+uniform float direction;
 uniform float disappearance;
 
 const float waves = 20;
@@ -20,7 +20,7 @@ void main() {
     uv.x *= resolution.x / resolution.y;
     float g = length(uv);
     float g2 = g + disappearance;
-    float time_param = reverse ? -(time * speed) : (time * speed);
+    float time_param = (time * speed) * direction;
     g = sin((g * waves) + time_param) / waves;
     g = abs(g);
     g = smoothstep(0, thickness, g);

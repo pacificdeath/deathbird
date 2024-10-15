@@ -53,6 +53,8 @@
 #define BIRD_BLOOD_TEX_AMOUNT 4
 #define BIRD_DAMAGE_TIME 0.2
 #define BIRD_DEATH_VELOCITY_MULTIPLIER 0.8f
+#define BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_INHALE 1.5f
+#define BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_EXHALE 1.5f
 #define BIRD_DEATH_MAX_RANDOM_VELOCITY 1.4f
 #define BIRD_DEATH_GROUND_BOUNCE_VELOCITY_THRESHOLD 2.0f
 #define BIRD_DEATH_GROUND_BOUNCE_VELOCITY -0.4f
@@ -82,6 +84,7 @@
 #define PORTAL_APPEAR_SPEED 2.0f
 #define PORTAL_DISAPPEAR_SPEED PORTAL_APPEAR_SPEED
 #define PORTAL_EXHALE_RATE 0.1f
+#define PORTAL_ATTRACT_MULTIPLIER 1.0f
 
 #define OPAQUE (Color){255,255,255,255}
 #define DEATH_SOUND_AMOUNT 8
@@ -197,10 +200,12 @@ typedef struct Level_Data {
 
 typedef enum Player_State {
     PLAYER_STATE_NONE = 0,
-    PLAYER_STATE_PORTAL,
+    PLAYER_STATE_EXHALED_BY_PORTAL,
     PLAYER_STATE_GROUNDED,
     PLAYER_STATE_UP,
     PLAYER_STATE_DOWN,
+    PLAYER_STATE_INHALED_BY_PORTAL,
+    PLAYER_STATE_INSIDE_PORTAL,
 } Player_State;
 
 typedef enum Bird_Type {
@@ -216,7 +221,6 @@ typedef struct Player {
     Player_State state;
     Vector2 position;
     float rotation;
-    uint8 damage;
     uint16 current_input_key;
     uint level_score;
     Bird_Type obliterated_birds[BIRD_TYPES_TOTAL];
@@ -245,9 +249,13 @@ typedef struct Bird_Dead {
 } Bird_Dead;
 
 typedef enum Bird_State {
+    BIRD_STATE_NONE = 0,
     BIRD_STATE_AVAILABLE,
     BIRD_STATE_ALIVE,
     BIRD_STATE_DEAD,
+    BIRD_STATE_INHALED_BY_PORTAL,
+    BIRD_STATE_INSIDE_PORTAL,
+    BIRD_STATE_EXHALED_BY_PORTAL,
 } Bird_State;
 
 typedef struct Bird {
@@ -304,10 +312,11 @@ typedef struct Fader {
 
 typedef enum Portal_Bits {
     PORTAL_BIT_NONE = 0,
-    PORTAL_BIT_REVERSED = 1 << 0,
-    PORTAL_BIT_RED = 1 << 1,
-    PORTAL_BIT_GREEN = 1 << 2,
-    PORTAL_BIT_BLUE = 1 << 3,
+    PORTAL_BIT_INHALE = 1 << 0,
+    PORTAL_BIT_EXHALE = 1 << 1,
+    PORTAL_BIT_RED = 1 << 2,
+    PORTAL_BIT_GREEN = 1 << 3,
+    PORTAL_BIT_BLUE = 1 << 4,
     PORTAL_BIT_YELLOW = (
         PORTAL_BIT_RED |
         PORTAL_BIT_GREEN
@@ -335,20 +344,19 @@ typedef struct Portal {
     float smooth_disappearance;
     Color color;
     float timer;
-    uint8 item_idx;
 } Portal;
 
 typedef enum World_State {
     WORLD_STATE_MENU = 0,
     WORLD_STATE_MENU_FADE_OUT,
     WORLD_STATE_GAME_FADE_IN,
-    WORLD_STATE_PRE_GAME_PORTAL_IN,
+    WORLD_STATE_PRE_GAME_PORTAL_APPEAR,
     WORLD_STATE_PRE_GAME_PORTAL_EXHALE,
-    WORLD_STATE_PRE_GAME_PORTAL_OUT,
+    WORLD_STATE_PRE_GAME_PORTAL_DISAPPEAR,
     WORLD_STATE_GAME,
-    WORLD_STATE_POST_GAME_PORTAL_IN,
+    WORLD_STATE_POST_GAME_PORTAL_APPEAR,
     WORLD_STATE_POST_GAME_PORTAL_INHALE,
-    WORLD_STATE_POST_GAME_PORTAL_OUT,
+    WORLD_STATE_POST_GAME_PORTAL_DISAPPEAR,
     WORLD_STATE_GAME_FADE_OUT,
     WORLD_STATE_MENU_FADE_IN,
 } World_State;
@@ -395,10 +403,18 @@ typedef struct State {
 
 bool has_flag(int flags, int flag);
 float randf(float min, float max);
+
 Vector2 vec2_normalized(float x, float y);
+Vector2 vec2_direction(Vector2 from, Vector2 to);
 float vec2_distance(Vector2 a, Vector2 b);
-void tex_atlas_init(State *state);
+
 void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color);
+void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale);
+
+Vector2 portal_get_position(State *state);
+float portal_distance_to_center_ratio(State *state, Vector2 position);
+bool portal_inhale_object(float *obj_position, float obj_step, float portal_position);
+
 bool bird_try_destroy(State *state, Bird *bird, Vector2 from);
 
 #endif
