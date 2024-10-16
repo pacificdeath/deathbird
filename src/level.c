@@ -202,10 +202,7 @@ void level_update(State *state) {
 
 void level_render(State *state) {
     Scroll_Env *scroll_envs = state->scroll_envs;
-    Vector2 tex_size = {
-        .x = 2.0f / GAME_WIDTH_RATIO,
-        .y = 2.0f / GAME_HEIGHT_RATIO,
-    };
+    Vector2 tex_size = env_tex_size();
     Vector2 tex_offset = env_tex_offset(tex_size);
     for (int i = 0; i < state->current_level_data.scroll_env_amount; i++) {
         for (int x = 0; x < scroll_envs[i].horizontal_textures; x++) {

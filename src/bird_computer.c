@@ -343,8 +343,9 @@ void bird_computer_render(State *state) {
                                     .y = map_top + map_line_size + (map_cell_size * map_row),
                                 };
                                 if (tex_amount > 0) {
+                                    Vector2 origin = {0};
                                     for (int i = 0; i < tex_amount; i++) {
-                                        tex_atlas_draw_raw(state, tex + i, tex_position, 0, tex_cell_size);
+                                        tex_atlas_draw_raw(state, tex + i, tex_position, 0, tex_cell_size, origin, OPAQUE);
                                     }
                                 } else {
                                     Rectangle inner_rec = {

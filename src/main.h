@@ -158,14 +158,13 @@ typedef enum Tex {
     TEX_PLAYER_1,
     TEX_PLAYER_2,
     TEX_PLAYER_3,
-    TEX_DUMB,
     TEX_TOTAL,
 } Tex;
 
 typedef struct Tex_Atlas_Offset {
-    int16 x;
-    int16 y;
-    int16 size;
+    uint16 x;
+    uint16 y;
+    uint16 size;
 } Tex_Atlas_Offset;
 
 typedef struct Scroll_Env {
@@ -409,7 +408,7 @@ Vector2 vec2_direction(Vector2 from, Vector2 to);
 float vec2_distance(Vector2 a, Vector2 b);
 
 void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color);
-void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale);
+void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale, Vector2 origin, Color color);
 
 Vector2 portal_get_position(State *state);
 float portal_distance_to_center_ratio(State *state, Vector2 position);
