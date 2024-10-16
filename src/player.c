@@ -31,8 +31,7 @@ static void handle_score(State *state) {
     player->state = PLAYER_STATE_GROUNDED;
     int multiplier = player->bird_multiplier;
     player->bird_multiplier = 0;
-    if (multiplier < 2) {
-        player->level_score += 1;
+    if (multiplier == 0) {
         return;
     }
     int last_place = BIRD_COMPUTER_LINE_COUNT - 1;

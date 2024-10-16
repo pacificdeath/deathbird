@@ -219,16 +219,20 @@ void bird_computer_render(State *state) {
     };
 
     // background
-    DrawRectangle(state->game_left, state->game_top, state->game_width, state->game_height, BIRD_COMPUTER_BG_COLOR);
-    Rectangle rec = {
-        .x = state->game_left,
-        .y = state->game_top + dimensions.header_size,
-        .width = state->game_width / 2,
-        .height = dimensions.line_section_size
-    };
-    DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
-    rec.x = state->game_center_x;
-    DrawRectangleLinesEx(rec, state->scale_multiplier, BIRD_COMPUTER_FG_COLOR);
+    Rectangle rec = {state->game_left, state->game_top, state->game_width, state->game_height};
+    DrawRectangleRec(rec, BIRD_COMPUTER_BG_COLOR);
+
+    {
+        float line_thickness = state->scale_multiplier;
+        Vector2 start = {state->game_left, state->game_top + dimensions.header_size};
+        Vector2 end = {state->game_right, start.y};
+        DrawLineEx(start, end, line_thickness, BIRD_COMPUTER_FG_COLOR);
+        start.x = state->game_center_x;
+        end.x = start.x;
+        end.y = state->game_bottom;
+        DrawLineEx(start, end, line_thickness, BIRD_COMPUTER_FG_COLOR);
+    }
+
     {
         // cursor background
         float left_padding = (dimensions.x_fract * 1.7);

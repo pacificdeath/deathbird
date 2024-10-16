@@ -157,7 +157,7 @@ void level_setup_next(State *state) {
     int extra_birds = next_round * LEVEL_BIRD_AMOUNT_MULTIPLIER;
     int extra_birds_random = GetRandomValue(LEVEL_MIN_RANDOM_BIRD_AMOUNT, LEVEL_MAX_RANDOM_BIRD_AMOUNT);
     state->next_level_data.total_birds = LEVEL_BASE_BIRD_TOTAL + extra_birds + extra_birds_random;
-    state->next_level_data.required_score = state->next_level_data.total_birds + (next_round * next_round);
+    state->next_level_data.required_score = state->next_level_data.total_birds * 5.0f;
 
     if (next_round >= LEVELS_BEFORE_MIN_FREQUENCY) {
         state->next_level_data.bird_frequency = LEVEL_MIN_BIRD_FREQUENCY;
@@ -224,57 +224,67 @@ void level_render(State *state) {
     DrawRectangleV(round_number_position, round_number_text_dimensions, LEVEL_CURRENT_ROUND_TEXT_BG_COLOR);
     DrawTextPro(state->bird_computer.font, buffer, round_number_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_CURRENT_ROUND_TEXT_COLOR);
 
-    { // Score bar
-        Vector2 score_bar_position = {
+    { // Progress bars
+        Vector2 bar_position = {
             .x = state->game_left + state->game_width / 4,
             .y = state->game_top,
         };
-        Vector2 score_bg_size = {
+        Vector2 bar_bg_size = {
             .x = state->game_width / 2,
             .y = state->game_height / 20,
         };
         if (level_score_reached(state)) {
-            DrawRectangleV(score_bar_position, score_bg_size, LEVEL_SCORE_BAR_FILLED_FG_COLOR);
+            DrawRectangleV(bar_position, bar_bg_size, LEVEL_SCORE_BAR_FILLED_FG_COLOR);
         } else {
-            DrawRectangleV(score_bar_position, score_bg_size, LEVEL_SCORE_BAR_BG_COLOR);
+            DrawRectangleV(bar_position, bar_bg_size, LEVEL_SCORE_BAR_BG_COLOR);
 
             float fill_ratio = (float)(state->player.level_score) / (float)(state->current_level_data.required_score);
             Vector2 score_fill_size = {
-                .x = score_bg_size.x * fill_ratio,
-                .y = score_bg_size.y
+                .x = bar_bg_size.x * fill_ratio,
+                .y = bar_bg_size.y
             };
 
-            DrawRectangleV(score_bar_position, score_fill_size, LEVEL_SCORE_BAR_FILL_FG_COLOR);
+            DrawRectangleV(bar_position, score_fill_size, LEVEL_SCORE_BAR_FILL_FG_COLOR);
 
             if (state->player.bird_multiplier > 0) {
                 Vector2 preview_fill_position = {
-                    .x = score_bar_position.x + score_fill_size.x,
-                    .y = score_bar_position.y
+                    .x = bar_position.x + score_fill_size.x,
+                    .y = bar_position.y
                 };
                 float x = state->player.bird_multiplier;
                 float multiplier = (float)(x*x);
                 float preview_fill_ratio = multiplier / (float)(state->current_level_data.required_score);
                 Vector2 preview_fill_size = {
-                    .x = score_bg_size.x * preview_fill_ratio,
-                    .y = score_bg_size.y
+                    .x = bar_bg_size.x * preview_fill_ratio,
+                    .y = bar_bg_size.y
                 };
-                float max_preview_x_size = score_bg_size.x - score_fill_size.x;
+                float max_preview_x_size = bar_bg_size.x - score_fill_size.x;
                 if (preview_fill_size.x > max_preview_x_size) {
                     preview_fill_size.x = max_preview_x_size;
                 }
                 Color preview_fill_color = LEVEL_SCORE_BAR_PREVIEW_FILL_FG_COLOR;
                 preview_fill_color.a = 128.0f * (sin(GetTime() * 20.0f) + 1.0f);
                 DrawRectangleV(preview_fill_position, preview_fill_size, preview_fill_color);
-                score_bg_size.x = score_bg_size.x * fill_ratio;
             }
         }
         sprintf(buffer, "%i / %i", state->player.level_score, state->current_level_data.required_score);
         Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
         Vector2 score_text_position = {
             .x = state->game_center_x - (score_text_dimensions.x / 2),
-            .y = score_bar_position.y + (score_bg_size.y / 2) - (score_text_dimensions.y / 2)
+            .y = bar_position.y + (bar_bg_size.y / 2) - (score_text_dimensions.y / 2)
         };
         DrawTextPro(state->bird_computer.font, buffer, score_text_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_SCORE_TEXT_COLOR);
+
+        bar_position.y += bar_bg_size.y;
+        DrawRectangleV(bar_position, bar_bg_size, LEVEL_PASSED_BIRDS_BAR_BG_COLOR);
+
+        float birds_passed_fill_ratio = (float)state->current_level_data.passed_birds / (float)state->current_level_data.total_birds;
+        dbgi(state->current_level_data.passed_birds);
+        Vector2 passed_birds_fill_size = {
+            .x = bar_bg_size.x * birds_passed_fill_ratio,
+            .y = bar_bg_size.y
+        };
+        DrawRectangleV(bar_position, passed_birds_fill_size, LEVEL_PASSED_BIRDS_BAR_FG_COLOR);
     }
 
     if (state->player.bird_multiplier_timer > 0.0f) {

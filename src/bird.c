@@ -338,7 +338,6 @@ bool bird_try_destroy(State *state, Bird *bird, Vector2 from) {
 }
 
 void birds_give_alive_ones_to_portal(State *state) {
-    state->current_level_data.passed_birds = state->current_level_data.total_birds;
     Bird *birds = state->birds;
     Vector2 portal_position = portal_get_position(state);
     for (int i = 0; i < BIRD_CAPACITY; i++) {
