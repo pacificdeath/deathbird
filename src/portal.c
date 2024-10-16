@@ -144,7 +144,6 @@ bool portal_exhale(State *state) {
             default: break;
             }
         }
-
         switch (state->player.state) {
         case PLAYER_STATE_INSIDE_PORTAL: {
             state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;

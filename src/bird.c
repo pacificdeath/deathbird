@@ -71,16 +71,21 @@ static void blood_draw(State *state, Bird *bird) {
 static void bird_death_velocity_setup(Bird *bird, Vector2 master_velocity, float multiplier) {
     bird->dead = (Bird_Dead){0};
     Bird_Dead *dead_bird = &bird->dead;
-    for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
-        dead_bird->death_positions[j] = bird->position;
+    for (int i = 0; i < BIRD_DEATH_PARTS; i++) {
+        dead_bird->death_positions[i] = bird->position;
         Vector2 velocity = {
             (master_velocity.x + randf(-BIRD_DEATH_MAX_RANDOM_VELOCITY, BIRD_DEATH_MAX_RANDOM_VELOCITY)) * multiplier,
             (master_velocity.y + randf(-BIRD_DEATH_MAX_RANDOM_VELOCITY, BIRD_DEATH_MAX_RANDOM_VELOCITY)) * multiplier
         };
-        dead_bird->death_velocities[j] = velocity;
+        dead_bird->death_velocities[i] = velocity;
         float angular_velocity = randf(-BIRD_DEATH_MAX_RANDOM_ANGULAR_VELOCITY, BIRD_DEATH_MAX_RANDOM_ANGULAR_VELOCITY);
-        dead_bird->death_angular_velocities[j] = angular_velocity;
-        dead_bird->death_rotations[j] = 0.0f;
+        dead_bird->death_angular_velocities[i] = angular_velocity;
+        dead_bird->death_rotations[i] = 0.0f;
+        dead_bird->blood_idx = 0;
+        dead_bird->anim_time = 0.0f;
+        if (velocity.x == 0.0f || velocity.y == 0.0f) {
+            dead_bird->death_velocities[i] = (Vector2){0.0f, -0.1f};
+        }
     }
 }
 
@@ -209,9 +214,9 @@ void birds_update(State *state) {
                     continue;
                 }
                 all_off_screen = false;
-                dead_bird->death_velocities[j].y += BIRD_GRAVITY * state->delta_time;
+                dead_bird->death_velocities[j].y -= BIRD_GRAVITY * state->delta_time;
                 dead_bird->death_positions[j].x += dead_bird->death_velocities[j].x * state->delta_time;
-                dead_bird->death_positions[j].y -= dead_bird->death_velocities[j].y * state->delta_time;
+                dead_bird->death_positions[j].y += dead_bird->death_velocities[j].y * state->delta_time;
                 dead_bird->death_rotations[j] += dead_bird->death_angular_velocities[j] * state->delta_time;
             }
             blood_animation(state, dead_bird);
@@ -225,6 +230,9 @@ void birds_update(State *state) {
             float out_of_bounds = 0.2;
             Vector2 portal_position = portal_get_position(state);
             for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
+                float velocity_gain = 1.0f + (PORTAL_EMIT_MULTIPLIER * state->delta_time);
+                dead_bird->death_velocities[j].x *= velocity_gain;
+                dead_bird->death_velocities[j].y *= velocity_gain;
                 if (
                     dead_bird->death_velocities[j].y > BIRD_DEATH_GROUND_BOUNCE_VELOCITY_THRESHOLD &&
                     dead_bird->death_positions[j].y < GAME_GROUND_Y
@@ -233,16 +241,14 @@ void birds_update(State *state) {
                 } else if (
                     dead_bird->death_positions[j].x < (-1.0f - out_of_bounds) ||
                     dead_bird->death_positions[j].x > (1.0f + out_of_bounds) ||
-                    dead_bird->death_positions[j].y < (-1.0f - out_of_bounds)
-                    /*  ignore the case when the part is above the screen because it is
-                        funny if the bloody bodypart comes back down */
+                    dead_bird->death_positions[j].y < (-1.0f - out_of_bounds) ||
+                    dead_bird->death_positions[j].y > (1.0f + out_of_bounds)
                 ) {
                     continue;
                 }
                 all_off_screen = false;
-                dead_bird->death_velocities[j].y += BIRD_GRAVITY * state->delta_time;
                 dead_bird->death_positions[j].x += dead_bird->death_velocities[j].x * state->delta_time;
-                dead_bird->death_positions[j].y -= dead_bird->death_velocities[j].y * state->delta_time;
+                dead_bird->death_positions[j].y += dead_bird->death_velocities[j].y * state->delta_time;
                 dead_bird->death_rotations[j] += dead_bird->death_angular_velocities[j] * state->delta_time;
             }
             if (all_off_screen) {
@@ -301,7 +307,6 @@ bool bird_try_destroy(State *state, Bird *bird, Vector2 from) {
     Bird_Alive *alive_bird = &bird->alive;
     alive_bird->health--;
     if (alive_bird->health <= 0) {
-        state->player.level_score++;
         state->player.bird_multiplier++;
         state->player.obliterated_birds[bird->type]++;
         Vector2 master_velocity = vec2_normalized(
@@ -337,17 +342,18 @@ void birds_give_alive_ones_to_portal(State *state) {
     Bird *birds = state->birds;
     Vector2 portal_position = portal_get_position(state);
     for (int i = 0; i < BIRD_CAPACITY; i++) {
-        if (birds[i].state != BIRD_STATE_ALIVE) {
-            birds[i].state = BIRD_STATE_NONE;
-            continue;
+        switch (birds[i].state) {
+        default: continue;
+        case BIRD_STATE_ALIVE: {
+            Vector2 master_velocity = vec2_normalized(
+                birds[i].position.x - portal_position.x,
+                birds[i].position.y - portal_position.y
+            );
+            bird_death_velocity_setup(&birds[i], master_velocity, BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_INHALE);
+        } break;
+        case BIRD_STATE_DEAD: break;
         }
-        Bird *bird = &birds[i];
-        Vector2 master_velocity = vec2_normalized(
-            bird->position.x - portal_position.x,
-            bird->position.y - portal_position.y
-        );
-        bird_death_velocity_setup(bird, master_velocity, BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_INHALE);
-        bird->state = BIRD_STATE_INHALED_BY_PORTAL;
+        birds[i].state = BIRD_STATE_INHALED_BY_PORTAL;
     }
 }
 

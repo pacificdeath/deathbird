@@ -24,9 +24,10 @@
 #define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
 #define LEVEL_CURRENT_ROUND_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
 #define LEVEL_CURRENT_ROUND_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
-#define LEVEL_SCORE_BG_COLOR ((Color) { 0, 0, 0, 128 })
-#define LEVEL_SCORE_NOT_REACHED_FG_COLOR ((Color) { 0, 255, 0, 128 })
-#define LEVEL_SCORE_REACHED_FG_COLOR ((Color) { 0, 128, 255, 128 })
+#define LEVEL_SCORE_BAR_BG_COLOR ((Color) { 0, 0, 0, 128 })
+#define LEVEL_SCORE_BAR_FILL_FG_COLOR ((Color) { 0, 255, 0, 128 })
+#define LEVEL_SCORE_BAR_PREVIEW_FILL_FG_COLOR ((Color) { 0, 255, 0, 255 })
+#define LEVEL_SCORE_BAR_FILLED_FG_COLOR ((Color) { 0, 128, 255, 128 })
 #define LEVEL_SCORE_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 #define LEVEL_MULTIPLIER_TEXT_BG_COLOR ((Color) { 255, 0, 0, 255 })
 #define LEVEL_MULTIPLIER_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
@@ -37,7 +38,6 @@
 #define PLAYER_ROTATION_SPEED_GROUND_MOVEMENT 1200.0f
 #define PLAYER_ROTATION_SPEED_PORTAL 1000.0f
 #define PLAYER_ROTATION_SPEED_AIR 2500.0f
-#define PLAYER_SMALLEST_VALID_MULTIPLIER 2
 #define PLAYER_MULTIPLIER_DISPLAY_TIME 1.0f
 
 #define BIRD_CAPACITY 32
@@ -54,7 +54,7 @@
 #define BIRD_DAMAGE_TIME 0.2
 #define BIRD_DEATH_VELOCITY_MULTIPLIER 0.8f
 #define BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_INHALE 1.5f
-#define BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_EXHALE 1.5f
+#define BIRD_DEATH_VELOCITY_MULTIPLIER_PORTAL_EXHALE 0.8f
 #define BIRD_DEATH_MAX_RANDOM_VELOCITY 1.4f
 #define BIRD_DEATH_GROUND_BOUNCE_VELOCITY_THRESHOLD 2.0f
 #define BIRD_DEATH_GROUND_BOUNCE_VELOCITY -0.4f
@@ -85,19 +85,18 @@
 #define PORTAL_DISAPPEAR_SPEED PORTAL_APPEAR_SPEED
 #define PORTAL_EXHALE_RATE 0.1f
 #define PORTAL_ATTRACT_MULTIPLIER 1.0f
+#define PORTAL_EMIT_MULTIPLIER 1.0f
 
 #define OPAQUE (Color){255,255,255,255}
 #define DEATH_SOUND_AMOUNT 8
 
 #ifdef DEBUG
 #include "stdio.h"
-#define dbgi(i) printf("DEATHBIRD: %i\n", i)
-#define dbgf(f) printf("DEATHBIRD: %f\n", f)
-#define dbgs(s) printf("DEATHBIRD: %s\n", s)
+#define dbgi(i) printf("%f Deathbird: %i\n", (float)(GetTime()), i)
+#define dbgf(f) printf("%f Deathbird: %f\n", (float)(GetTime()), f)
 #else
 #define dbgi(i)
 #define dbgf(f)
-#define dbgs(s)
 #endif
 
 typedef char int8;

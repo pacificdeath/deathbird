@@ -31,7 +31,8 @@ static void handle_score(State *state) {
     player->state = PLAYER_STATE_GROUNDED;
     int multiplier = player->bird_multiplier;
     player->bird_multiplier = 0;
-    if (multiplier < PLAYER_SMALLEST_VALID_MULTIPLIER) {
+    if (multiplier < 2) {
+        player->level_score += 1;
         return;
     }
     int last_place = BIRD_COMPUTER_LINE_COUNT - 1;
@@ -51,7 +52,7 @@ static void handle_score(State *state) {
 
 void player_level_setup(State *state) {
     Player *player = &state->player;
-    player->state = PLAYER_STATE_NONE;
+    player->state = PLAYER_STATE_INSIDE_PORTAL;
     player->position.x = 0.0f;
     player->position.y = 0.0f;
     player->level_score = 0;
@@ -71,7 +72,9 @@ void player_update(State *state) {
     bool down_arrow_hold = IsKeyDown(KEY_DOWN);
     bool up_arrow_hold = IsKeyDown(KEY_UP);
     switch (player->state) {
-    case PLAYER_STATE_NONE: break;
+    case PLAYER_STATE_NONE:
+    case PLAYER_STATE_INSIDE_PORTAL:
+        break;
     case PLAYER_STATE_EXHALED_BY_PORTAL: {
         Vector2 portal_position = portal_get_position(state);
         float portal_distance = vec2_distance(portal_position, player->position);
@@ -196,10 +199,6 @@ void player_update(State *state) {
     }
 }
 
-void player_force_end_multiplier(State *state) {
-    handle_score(state);
-}
-
 void player_render(State *state) {
     switch (state->player.state) {
     default: {
@@ -228,8 +227,7 @@ void player_render(State *state) {
         );
     } break;
     case PLAYER_STATE_NONE:
-    case PLAYER_STATE_INSIDE_PORTAL: {
+    case PLAYER_STATE_INSIDE_PORTAL:
         break;
-    } break;
     }
 }

@@ -33,10 +33,12 @@ static void atlas_destination_rectangle(State *state, Rectangle *rec, Vector2 po
 static float tex_render_scale(State *state, Tex tex, float multiplier) {
     float size = (float)(state->tex_atlas_offsets[tex].size);
     float result = size * state->scale_multiplier * multiplier;
+    /*
     if ((uint)(result * GAME_WIDTH_RATIO) < state->game_width) {
         // as long as GAME_WIDTH_RATIO is odd we might need to add a correction pixel
         result += 1.0f;
     }
+    */
     return result;
 }
 

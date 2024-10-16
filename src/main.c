@@ -84,6 +84,7 @@ void toggle_state_dimensions_fullscreen(State *state) {
         ToggleFullscreen();
         SetWindowSize(state->window_width, state->window_height);
         update_state_dimensions(state, state->window_width, state->window_height);
+        ShowCursor();
     } else {
         int monitor = GetCurrentMonitor();
         int w = GetMonitorWidth(monitor);
@@ -91,6 +92,7 @@ void toggle_state_dimensions_fullscreen(State *state) {
         ToggleFullscreen();
         SetWindowSize(w, h);
         update_state_dimensions(state, w, h);
+        HideCursor();
     }
 }
 
@@ -190,7 +192,6 @@ int main(void) {
         case WORLD_STATE_PRE_GAME_PORTAL_APPEAR: {
             level_update(state);
             if (portal_appear(state)) {
-                state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
                 state->world_state = WORLD_STATE_PRE_GAME_PORTAL_EXHALE;
             }
         } break;
@@ -223,7 +224,7 @@ int main(void) {
                 birds_give_alive_ones_to_portal(state);
                 state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
                 state->world_state = WORLD_STATE_POST_GAME_PORTAL_APPEAR;
-            } else if (birds_ran_out(state)) {
+            } else if (birds_ran_out(state) && state->player.state == PLAYER_STATE_GROUNDED) {
                 portal_setup(state, PORTAL_BIT_NONE);
                 state->world_state = WORLD_STATE_POST_GAME_PORTAL_APPEAR;
             }

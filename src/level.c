@@ -212,7 +212,7 @@ void level_render(State *state) {
                     tex_offset.y + scroll_envs[i].scroll.y + (tex_size.y * y)
                 };
                 Color color = {255,255,255,scroll_envs[i].opacity};
-                tex_atlas_draw(state, scroll_envs[i].tex, position, 0.0f, 1.0f, color);
+                tex_atlas_draw(state, scroll_envs[i].tex, position, 0.0f, 1.01f, color);
             }
         }
     }
@@ -223,29 +223,60 @@ void level_render(State *state) {
     Vector2 round_number_position = { .x = state->game_left, .y = state->game_top };
     DrawRectangleV(round_number_position, round_number_text_dimensions, LEVEL_CURRENT_ROUND_TEXT_BG_COLOR);
     DrawTextPro(state->bird_computer.font, buffer, round_number_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_CURRENT_ROUND_TEXT_COLOR);
-    Vector2 score_bar_position = {
-        .x = state->game_left + state->game_width / 4,
-        .y = state->game_top,
-    };
-    Vector2 score_bar_size = {
-        .x = state->game_width / 2,
-        .y = state->game_height / 20,
-    };
-    if (level_score_reached(state)) {
-        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_REACHED_FG_COLOR);
-    } else {
-        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_BG_COLOR);
-        float player_relative_score = (float)state->player.level_score / (float)state->current_level_data.required_score;
-        score_bar_size.x = score_bar_size.x * player_relative_score;
-        DrawRectangleV(score_bar_position, score_bar_size, LEVEL_SCORE_NOT_REACHED_FG_COLOR);
+
+    { // Score bar
+        Vector2 score_bar_position = {
+            .x = state->game_left + state->game_width / 4,
+            .y = state->game_top,
+        };
+        Vector2 score_bg_size = {
+            .x = state->game_width / 2,
+            .y = state->game_height / 20,
+        };
+        if (level_score_reached(state)) {
+            DrawRectangleV(score_bar_position, score_bg_size, LEVEL_SCORE_BAR_FILLED_FG_COLOR);
+        } else {
+            DrawRectangleV(score_bar_position, score_bg_size, LEVEL_SCORE_BAR_BG_COLOR);
+
+            float fill_ratio = (float)(state->player.level_score) / (float)(state->current_level_data.required_score);
+            Vector2 score_fill_size = {
+                .x = score_bg_size.x * fill_ratio,
+                .y = score_bg_size.y
+            };
+
+            DrawRectangleV(score_bar_position, score_fill_size, LEVEL_SCORE_BAR_FILL_FG_COLOR);
+
+            if (state->player.bird_multiplier > 0) {
+                Vector2 preview_fill_position = {
+                    .x = score_bar_position.x + score_fill_size.x,
+                    .y = score_bar_position.y
+                };
+                float x = state->player.bird_multiplier;
+                float multiplier = (float)(x*x);
+                float preview_fill_ratio = multiplier / (float)(state->current_level_data.required_score);
+                Vector2 preview_fill_size = {
+                    .x = score_bg_size.x * preview_fill_ratio,
+                    .y = score_bg_size.y
+                };
+                float max_preview_x_size = score_bg_size.x - score_fill_size.x;
+                if (preview_fill_size.x > max_preview_x_size) {
+                    preview_fill_size.x = max_preview_x_size;
+                }
+                Color preview_fill_color = LEVEL_SCORE_BAR_PREVIEW_FILL_FG_COLOR;
+                preview_fill_color.a = 128.0f * (sin(GetTime() * 20.0f) + 1.0f);
+                DrawRectangleV(preview_fill_position, preview_fill_size, preview_fill_color);
+                score_bg_size.x = score_bg_size.x * fill_ratio;
+            }
+        }
+        sprintf(buffer, "%i / %i", state->player.level_score, state->current_level_data.required_score);
+        Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
+        Vector2 score_text_position = {
+            .x = state->game_center_x - (score_text_dimensions.x / 2),
+            .y = score_bar_position.y + (score_bg_size.y / 2) - (score_text_dimensions.y / 2)
+        };
+        DrawTextPro(state->bird_computer.font, buffer, score_text_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_SCORE_TEXT_COLOR);
     }
-    sprintf(buffer, "%i / %i", state->player.level_score, state->current_level_data.required_score);
-    Vector2 score_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
-    Vector2 score_text_position = {
-        .x = state->game_center_x - (score_text_dimensions.x / 2),
-        .y = score_bar_position.y + (score_bar_size.y / 2) - (score_text_dimensions.y / 2)
-    };
-    DrawTextPro(state->bird_computer.font, buffer, score_text_position, (Vector2) { 0, 0 }, 0, font_size, 0, LEVEL_SCORE_TEXT_COLOR);
+
     if (state->player.bird_multiplier_timer > 0.0f) {
         sprintf(buffer, " %ix-Multiplier ", state->player.bird_multiplier_display);
         Vector2 multiplier_text_dimensions = MeasureTextEx(state->bird_computer.font, buffer, font_size, 0);
