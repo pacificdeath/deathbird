@@ -143,28 +143,32 @@ void birds_update(State *state) {
             case LEVEL_ENVIRONMENT_NONE: {
                 birds[i].type = BIRD_TYPE_GIANT;
                 birds[i].alive.health = 255;
-                birds[i].alive.collision_radius = 0.0f;
+                birds[i].alive.collision_bounds = (Vector2){0};
             } break;
             case LEVEL_ENVIRONMENT_FOREST: {
                 if (state->current_level_data.spawned_birds % 10 == 0) {
                     birds[i].type = BIRD_TYPE_GIANT;
                     birds[i].alive.health = 2;
-                    birds[i].alive.collision_radius = 0.2f;
+                    birds[i].alive.collision_bounds.x = 0.2f;
+                    birds[i].alive.collision_bounds.y = 0.2f;
                 } else {
                     birds[i].type = BIRD_TYPE_WHITE;
                     birds[i].alive.health = 1;
-                    birds[i].alive.collision_radius = 0.1f;
+                    birds[i].alive.collision_bounds.x = 0.1f;
+                    birds[i].alive.collision_bounds.y = 0.1f;
                 }
             } break;
             case LEVEL_ENVIRONMENT_MEADOWS: {
                 birds[i].type = BIRD_TYPE_YELLOW;
                 birds[i].alive.health = 1;
-                birds[i].alive.collision_radius = 0.1f;
+                birds[i].alive.collision_bounds.x = 0.1f;
+                birds[i].alive.collision_bounds.y = 0.1f;
             } break;
             case LEVEL_ENVIRONMENT_MOUNTAINS: {
                 birds[i].type = BIRD_TYPE_BROWN;
                 birds[i].alive.health = 1;
-                birds[i].alive.collision_radius = 0.1f;
+                birds[i].alive.collision_bounds.x = 0.1f;
+                birds[i].alive.collision_bounds.y = 0.1f;
             } break;
             }
             birds[i].state = BIRD_STATE_ALIVE;

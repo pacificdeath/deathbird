@@ -104,33 +104,63 @@ void player_update(State *state) {
             handle_score(state);
             player->state = PLAYER_STATE_DOWN;
         }
-        Bird *bird;
+
+        Bird *bird_that_was_hit;
         bool bird_hit = false;
-        float closest = 100.0f;
+
+        float closest;
+        if (player->state == PLAYER_STATE_UP) {
+            closest = 100.0f;
+        } else { // PLAYER_STATE_DOWN
+            closest = -100.0f;
+        }
+
         for (int i = 0; i < BIRD_CAPACITY; i++) {
             if (birds[i].state != BIRD_STATE_ALIVE) {
                 continue;
             }
-            float x_distance = fabs(player->position.x - birds[i].position.x);
-            float y_distance = fabs(player->position.y - birds[i].position.y);
-            if (x_distance < birds[i].alive.collision_radius && y_distance < birds[i].alive.collision_radius) {
-                if (y_distance < closest) {
-                    bird = &birds[i];
-                    bird_hit = true;
-                    closest = y_distance;
-                }
+
+            float x_distance = birds[i].position.x - player->position.x;
+            x_distance = fabs(x_distance);
+            bool x_inside_bird_bounds = x_distance < birds[i].alive.collision_bounds.x;
+            if (!x_inside_bird_bounds) {
+                continue;
             }
+
+            float y_distance = birds[i].position.y - player->position.y;
+            float y_distance_abs = fabs(y_distance);
+            bool y_inside_bird_bounds = y_distance_abs < birds[i].alive.collision_bounds.y;
+            if (!y_inside_bird_bounds) {
+                continue;
+            }
+
+            bool y_closest_bird;
+            if (player->state == PLAYER_STATE_UP) {
+                y_closest_bird = y_distance < closest;
+            } else { // PLAYER_STATE_DOWN
+                y_closest_bird = y_distance > closest;
+            }
+
+            if (!y_inside_bird_bounds || !y_closest_bird) {
+                continue;
+            }
+
+            bird_that_was_hit = &birds[i];
+            bird_hit = true;
+            closest = y_distance_abs;
         }
+
         if (bird_hit) {
-            bool bird_was_destroyed = bird_try_destroy(state, bird, player->position);
+            float pre_destruction_collision_bounds_y = bird_that_was_hit->alive.collision_bounds.y;
+            bool bird_was_destroyed = bird_try_destroy(state, bird_that_was_hit, player->position);
             if (player->state == PLAYER_STATE_UP) {
                 if (!up_arrow_hold || !bird_was_destroyed) {
-                    player->position.y = bird->position.y - bird->alive.collision_radius;
+                    player->position.y = bird_that_was_hit->position.y - pre_destruction_collision_bounds_y;
                     player->state = PLAYER_STATE_DOWN;
                 }
             } else {
                 if (!down_arrow_hold || !bird_was_destroyed) {
-                    player->position.y = bird->position.y + bird->alive.collision_radius;
+                    player->position.y = bird_that_was_hit->position.y + pre_destruction_collision_bounds_y;
                     player->state = PLAYER_STATE_UP;
                 }
             }

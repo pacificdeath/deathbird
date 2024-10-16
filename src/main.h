@@ -233,7 +233,7 @@ typedef struct Player {
 typedef struct Bird_Alive {
     uint8 health;
     uint8 current_tex;
-    float collision_radius;
+    Vector2 collision_bounds;
     float move_speed;
     float anim_time;
     float damage_timer;
