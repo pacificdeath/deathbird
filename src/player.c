@@ -17,10 +17,16 @@ static void handle_input(State *state) {
     switch (player->current_input_key) {
     case KEY_LEFT: {
         player->position.x -= PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        if (player->position.x < PLAYER_MAX_LEFT) {
+            player->position.x = PLAYER_MAX_LEFT;
+        }
         player->rotation -= PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
     } break;
     case KEY_RIGHT: {
         player->position.x += PLAYER_HORIZONTAL_SPEED * state->delta_time;
+        if (player->position.x > PLAYER_MAX_RIGHT) {
+            player->position.x = PLAYER_MAX_RIGHT;
+        }
         player->rotation += PLAYER_ROTATION_SPEED_GROUND_MOVEMENT * state->delta_time;
     } break;
     }

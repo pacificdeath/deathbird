@@ -121,6 +121,16 @@ static int scroll_env_current_level_setup(State *state) {
 
         scroll_env_amount = 5;
     } break;
+    case LEVEL_ENVIRONMENT_RED_BIRD_NEST: {
+        scroll_envs[0].tex = TEX_ENV_WEIRD_WALL;
+        scroll_envs[0].horizontal_textures = 4;
+        scroll_envs[0].horizontal_speed = -0.03f;
+        scroll_envs[0].vertical_textures = 2;
+        scroll_envs[0].vertical_speed = 0.0f;
+        scroll_envs[0].opacity = 255;
+
+        scroll_env_amount = 1;
+    } break;
     }
     for (int i = 0; i < scroll_env_amount; i++) {
         scroll_envs[i].scroll.x = 0.0f;
@@ -279,7 +289,6 @@ void level_render(State *state) {
         DrawRectangleV(bar_position, bar_bg_size, LEVEL_PASSED_BIRDS_BAR_BG_COLOR);
 
         float birds_passed_fill_ratio = (float)state->current_level_data.passed_birds / (float)state->current_level_data.total_birds;
-        dbgi(state->current_level_data.passed_birds);
         Vector2 passed_birds_fill_size = {
             .x = bar_bg_size.x * birds_passed_fill_ratio,
             .y = bar_bg_size.y

@@ -10,6 +10,31 @@
 #include "fader.c"
 #include "portal.c"
 
+#ifdef DEBUG
+Vector2 to_pixel_position(State *state, Vector2 game_position) {
+    return (Vector2) {
+        state->game_left + (game_position.x + 1) / 2.0f * state->game_width,
+        state->game_bottom - (game_position.y + 1) / 2.0f * state->game_height
+    };
+}
+
+Vector2 to_pixel_size(State *state, Vector2 game_size) {
+    return (Vector2) {
+        game_size.x / 2.0f * state->game_width,
+        game_size.y / 2.0f * state->game_height
+    };
+}
+#endif
+
+Rectangle game_rectangle(State *state) {
+    return (Rectangle) {
+        .x = state->game_left,
+        .y = state->game_top,
+        .width = state->window_width,
+        .height = state->window_height
+    };
+}
+
 bool has_flag(int flags, int flag) {
     return (flags & flag) == flag;
 }
@@ -147,6 +172,16 @@ int main(void) {
 
     int skip_frames = 0;
     while (!WindowShouldClose()) {
+        #ifdef DEBUG
+            static bool tex_atlas_debug_active = false;
+            if (IsKeyPressed(KEY_A)) {
+                tex_atlas_debug_active = !tex_atlas_debug_active;
+            }
+            if (tex_atlas_debug_active) {
+                tex_atlas_debug(state);
+                continue;
+            }
+        #endif
         if (skip_frames > 0) {
             skip_frames--;
             BeginDrawing();

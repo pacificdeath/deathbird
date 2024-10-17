@@ -1,18 +1,40 @@
 #include "raylib.h"
 #include "main.h"
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
-static void add_texture_offsets(State *state, int *x, int *y, Tex tex, int size, int repeat, bool reset) {
-    for (int i = 0; i < repeat; i++) {
-        state->tex_atlas_offsets[tex + i] = (Tex_Atlas_Offset) {
-            .x = *x,
-            .y = *y,
-            .size = size
+typedef struct Texture_Offset_Data {
+    int x;
+    int y;
+    Tex start_texture;
+    int texture_size;
+    int consecutive_textures;
+    int reset_x_and_offset_y;
+} Texture_Offset_Data;
+
+static void add_texture_offsets(State *state, Texture_Offset_Data *data) {
+    #ifdef DEBUG
+    printf(
+        "Deathbird Atlas: Tex (%3i -> %3i) Size %3i Offset (x %3i y %3i)\n",
+        data->start_texture,
+        data->start_texture + data->consecutive_textures,
+        data->texture_size,
+        data->x,
+        data->y
+    );
+    #endif
+    for (int i = 0; i < data->consecutive_textures; i++) {
+        state->tex_atlas_offsets[data->start_texture + i] = (Tex_Atlas_Offset) {
+            .x = data->x,
+            .y = data->y,
+            .size = data->texture_size
         };
-        *x += size + ATLAS_PADDING;
+        data->x += data->texture_size + ATLAS_PADDING;
     }
-    if (reset) {
-        *x = ATLAS_PADDING;
-        *y += size + ATLAS_PADDING;
+    if (data->reset_x_and_offset_y) {
+        data->x = ATLAS_PADDING;
+        data->y += data->reset_x_and_offset_y + ATLAS_PADDING;
     }
 }
 
@@ -33,27 +55,69 @@ static void atlas_destination_rectangle(State *state, Rectangle *rec, Vector2 po
 static float tex_render_scale(State *state, Tex tex, float multiplier) {
     float size = (float)(state->tex_atlas_offsets[tex].size);
     float result = size * state->scale_multiplier * multiplier;
-    /*
-    if ((uint)(result * GAME_WIDTH_RATIO) < state->game_width) {
-        // as long as GAME_WIDTH_RATIO is odd we might need to add a correction pixel
-        result += 1.0f;
-    }
-    */
     return result;
 }
 
 void tex_atlas_init(State *state) {
     state->tex_atlas = LoadTexture("./textures/atlas.png");
-    int x = ATLAS_PADDING;
-    int y = ATLAS_PADDING;
-    add_texture_offsets(state, &x, &y, TEX_ENV_NIGHT_SKY, 128, 8, true);
-    add_texture_offsets(state, &x, &y, TEX_ENV_WINTER_SKY, 128, 5, true);
-    add_texture_offsets(state, &x, &y, TEX_GIANT_BIRD_1, 64, 7, true);
-    add_texture_offsets(state, &x, &y, TEX_WHITE_BIRD_1, 32, 21, true);
-    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_1, 32, 2, false);
-    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 16, 5, false);
-    add_texture_offsets(state, &x, &y, TEX_BIRD_BLOOD_3, 32, 0, true);
-    add_texture_offsets(state, &x, &y, TEX_PLAYER_1, 32, 3, true);
+
+    Texture_Offset_Data data;
+    data.x = ATLAS_PADDING;
+    data.y = ATLAS_PADDING;
+
+    data.start_texture = TEX_ENV_NIGHT_SKY;
+    data.texture_size = 128;
+    data.consecutive_textures = 9;
+    data.reset_x_and_offset_y = 128;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_ENV_WINTER_SKY;
+    data.texture_size = 128;
+    data.consecutive_textures = 6;
+    data.reset_x_and_offset_y = 128;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_GIANT_BIRD_1;
+    data.texture_size = 64;
+    data.consecutive_textures = 7;
+    data.reset_x_and_offset_y = 64;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_WHITE_BIRD_1;
+    data.texture_size = 32;
+    data.consecutive_textures = 28;
+    data.reset_x_and_offset_y = 32;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_BIRD_BLOOD_1;
+    data.texture_size = 32;
+    data.consecutive_textures = 2;
+    data.reset_x_and_offset_y = 0;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_BIRD_BLOOD_3;
+    data.texture_size = 16;
+    data.consecutive_textures = 5;
+    data.reset_x_and_offset_y = 0;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_BIRD_BLOOD_GREEN_1;
+    data.texture_size = 32;
+    data.consecutive_textures = 2;
+    data.reset_x_and_offset_y = 0;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_BIRD_BLOOD_GREEN_3;
+    data.texture_size = 16;
+    data.consecutive_textures = 5;
+    data.reset_x_and_offset_y = 32;
+    add_texture_offsets(state, &data);
+
+    data.start_texture = TEX_PLAYER_1;
+    data.texture_size = 32;
+    data.consecutive_textures = 3;
+    data.reset_x_and_offset_y = 32;
+    add_texture_offsets(state, &data);
 }
 
 void tex_atlas_cleanup(State *state) {
@@ -77,3 +141,24 @@ void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation,
     Rectangle dest = {position.x, position.y, render_scale, render_scale};
     DrawTexturePro(state->tex_atlas, source, dest, origin, rotation, WHITE);
 }
+
+#ifdef DEBUG
+void tex_atlas_debug(State *state) {
+    static Tex tex = 0;
+    if (IsKeyPressed(KEY_RIGHT)) {
+        tex = (tex + 1) % TEX_TOTAL;
+    } else if (IsKeyPressed(KEY_LEFT)) {
+        tex = ((tex + TEX_TOTAL) - 1) % TEX_TOTAL;
+    } else if (IsKeyPressed(KEY_UP)) {
+        tex = (tex + 10) % TEX_TOTAL;
+    } else if (IsKeyPressed(KEY_DOWN)) {
+        tex = ((tex + TEX_TOTAL) - 10) % TEX_TOTAL;
+    }
+    BeginDrawing();
+    Vector2 text_position = {state->game_left, state->game_top};
+    ClearBackground(BLACK);
+    DrawTextEx(state->bird_computer.font, TextFormat("Texture: %i", tex), text_position, 20 * state->scale_multiplier, 0.0f, WHITE);
+    tex_atlas_draw(state, tex, (Vector2){0}, 0.0f, 1.0f, WHITE);
+    EndDrawing();
+}
+#endif

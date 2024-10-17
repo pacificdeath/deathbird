@@ -2,10 +2,34 @@
 #include "raylib.h"
 #include "main.h"
 
+#ifdef DEBUG
+static void debug_draw_collision_bounds(State *state, Bird *bird) {
+    Vector2 px_bird_position = to_pixel_position(state, bird->position);
+    Vector2 px_collision_bounds = to_pixel_size(state, bird->alive.collision_bounds);
+    Vector2 px_rec_top_left = {
+        px_bird_position.x - px_collision_bounds.x,
+        px_bird_position.y - px_collision_bounds.y
+    };
+    Rectangle collision_rec = {
+        .x = px_rec_top_left.x,
+        .y = px_rec_top_left.y,
+        .width = px_collision_bounds.x * 2,
+        .height = px_collision_bounds.y * 2
+    };
+    DrawRectangleLinesEx(collision_rec, state->scale_multiplier, GREEN);
+}
+#endif
+
 static void get_bird_textures(Tex textures[BIRD_DEATH_PARTS], Bird_Type bird_type) {
+    // textures are added in rendering order
+    Tex gore_tex;
+    switch (bird_type) {
+    default: gore_tex = TEX_BIRD_GORE_1; break;
+    case BIRD_TYPE_RED: gore_tex = TEX_BIRD_GORE_GREEN_1; break;
+    }
     for (int j = 0; j < BIRD_DEATH_GORE_PARTS; j += BIRD_GORE_TEX_AMOUNT) {
         for (int k = 0; k < BIRD_GORE_TEX_AMOUNT; k++) {
-            textures[j + k] = TEX_BIRD_GORE_1 + k;
+            textures[j + k] = gore_tex + k;
         }
     }
     switch (bird_type) {
@@ -42,6 +66,14 @@ static void get_bird_textures(Tex textures[BIRD_DEATH_PARTS], Bird_Type bird_typ
         textures[BIRD_DEATH_PARTS - 2] = TEX_BROWN_BIRD_HEAD;
         textures[BIRD_DEATH_PARTS - 1] = TEX_BIRD_EYE;
     } break;
+    case BIRD_TYPE_RED: {
+        textures[BIRD_DEATH_PARTS - 6] = TEX_RED_BIRD_WING;
+        textures[BIRD_DEATH_PARTS - 5] = TEX_RED_BIRD_BODY;
+        textures[BIRD_DEATH_PARTS - 4] = TEX_RED_BIRD_WING;
+        textures[BIRD_DEATH_PARTS - 3] = TEX_BIRD_EYE_GREEN;
+        textures[BIRD_DEATH_PARTS - 2] = TEX_RED_BIRD_HEAD;
+        textures[BIRD_DEATH_PARTS - 1] = TEX_BIRD_EYE_GREEN;
+    } break;
     }
 }
 
@@ -63,7 +95,12 @@ static void blood_animation(State* state, Bird_Dead *dead_bird) {
 
 static void blood_draw(State *state, Bird *bird) {
     if (bird->dead.blood_idx < BIRD_BLOOD_TEX_AMOUNT) {
-        Tex blood_tex = TEX_BIRD_BLOOD_1 + bird->dead.blood_idx;
+        Tex blood_tex;
+        switch (bird->type) {
+        default: blood_tex = TEX_BIRD_BLOOD_1; break;
+        case BIRD_TYPE_RED: blood_tex = TEX_BIRD_BLOOD_GREEN_1; break;
+        }
+        blood_tex += bird->dead.blood_idx;
         tex_atlas_draw(state, blood_tex, bird->position, 0.0f, 1.0f, OPAQUE);
     }
 }
@@ -375,6 +412,7 @@ void birds_render(State *state) {
             case BIRD_TYPE_GIANT: bird_tex = TEX_GIANT_BIRD_1 + alive_bird->current_tex; break;
             case BIRD_TYPE_YELLOW: bird_tex = TEX_YELLOW_BIRD_1 + alive_bird->current_tex; break;
             case BIRD_TYPE_BROWN: bird_tex = TEX_BROWN_BIRD_1 + alive_bird->current_tex; break;
+            case BIRD_TYPE_RED: bird_tex = TEX_RED_BIRD_1 + alive_bird->current_tex; break;
             }
             if (alive_bird->damage_timer > 0.0f) {
                 BeginShaderMode(state->bird_damage_shader);
@@ -383,6 +421,9 @@ void birds_render(State *state) {
             } else {
                 tex_atlas_draw(state, bird_tex, birds[i].position, 0.0f, 1.0f, OPAQUE);
             }
+            #ifdef DEBUG
+            debug_draw_collision_bounds(state, &birds[i]);
+            #endif
         } break;
         case BIRD_STATE_DEAD: {
             Bird_Dead *dead_bird = &birds[i].dead;

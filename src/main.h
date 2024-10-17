@@ -36,6 +36,8 @@
 
 #define PLAYER_VERTICAL_SPEED 1.5f
 #define PLAYER_HORIZONTAL_SPEED 2.0f
+#define PLAYER_MAX_LEFT -0.9f
+#define PLAYER_MAX_RIGHT 0.9f
 #define PLAYER_ROTATION_SPEED_GROUND -450.0f
 #define PLAYER_ROTATION_SPEED_GROUND_MOVEMENT 1200.0f
 #define PLAYER_ROTATION_SPEED_PORTAL 1000.0f
@@ -121,6 +123,7 @@ typedef enum Tex {
     TEX_ENV_WINTER_HILLS,
     TEX_ENV_WINTER_TREES,
     TEX_ENV_SNOW,
+    TEX_ENV_WEIRD_WALL,
     TEX_GIANT_BIRD_1,
     TEX_GIANT_BIRD_2,
     TEX_GIANT_BIRD_3,
@@ -149,6 +152,13 @@ typedef enum Tex {
     TEX_BROWN_BIRD_HEAD,
     TEX_BROWN_BIRD_BODY,
     TEX_BROWN_BIRD_WING,
+    TEX_RED_BIRD_1,
+    TEX_RED_BIRD_2,
+    TEX_RED_BIRD_3,
+    TEX_RED_BIRD_4,
+    TEX_RED_BIRD_HEAD,
+    TEX_RED_BIRD_BODY,
+    TEX_RED_BIRD_WING,
     TEX_BIRD_BLOOD_1,
     TEX_BIRD_BLOOD_2,
     TEX_BIRD_BLOOD_3,
@@ -156,6 +166,13 @@ typedef enum Tex {
     TEX_BIRD_EYE,
     TEX_BIRD_GORE_1,
     TEX_BIRD_GORE_2,
+    TEX_BIRD_BLOOD_GREEN_1,
+    TEX_BIRD_BLOOD_GREEN_2,
+    TEX_BIRD_BLOOD_GREEN_3,
+    TEX_BIRD_BLOOD_GREEN_4,
+    TEX_BIRD_EYE_GREEN,
+    TEX_BIRD_GORE_GREEN_1,
+    TEX_BIRD_GORE_GREEN_2,
     TEX_PLAYER_1,
     TEX_PLAYER_2,
     TEX_PLAYER_3,
@@ -183,6 +200,7 @@ typedef enum Level_Environment {
     LEVEL_ENVIRONMENT_FOREST,
     LEVEL_ENVIRONMENT_MEADOWS,
     LEVEL_ENVIRONMENT_MOUNTAINS,
+    LEVEL_ENVIRONMENT_RED_BIRD_NEST,
     LEVEL_ENVIRONMENT_TOTAL,
 } Level_Environment;
 
@@ -214,6 +232,7 @@ typedef enum Bird_Type {
     BIRD_TYPE_GIANT,
     BIRD_TYPE_YELLOW,
     BIRD_TYPE_BROWN,
+    BIRD_TYPE_RED,
     BIRD_TYPES_TOTAL,
 } Bird_Type;
 
@@ -401,6 +420,12 @@ typedef struct State {
     float delta_time;
 } State;
 
+#ifdef DEBUG
+Vector2 to_pixel_position(State *state, Vector2 game_position);
+Vector2 to_pixel_size(State *state, Vector2 game_size);
+#endif
+
+Rectangle game_rectangle(State *state);
 bool has_flag(int flags, int flag);
 float randf(float min, float max);
 
