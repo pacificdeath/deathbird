@@ -3,9 +3,9 @@
 #include "main.h"
 
 // between 0.0f and 1.0f
-static void update_smooth_disappearance(Portal *p) {
-    float l = p->linear_disappearance;
-    p->smooth_disappearance = 0.5f * sin((l * PI) - (PI * 0.5f)) + 0.5f;
+static void update_smooth_disappearance(State *state) {
+    float l = state->portal_linear_disappearance;
+    state->portal_smooth_disappearance = 0.5f * sin((l * PI) - (PI * 0.5f)) + 0.5f;
 }
 
 Vector2 portal_get_position(State *state) {
@@ -25,15 +25,15 @@ float portal_distance_to_center_ratio(State *state, Vector2 position) {
     return 1.0f;
 }
 
-Portal_Bits portal_env_color(Level_Environment env) {
-    switch (env) {
-    case LEVEL_ENVIRONMENT_FOREST: {
+Portal_Bits portal_area_color(Area area) {
+    switch (area) {
+    case AREA_FOREST: {
         return PORTAL_BIT_GREEN;
     } break;
-    case LEVEL_ENVIRONMENT_MEADOWS: {
+    case AREA_MEADOWS: {
         return PORTAL_BIT_YELLOW;
     } break;
-    case LEVEL_ENVIRONMENT_MOUNTAINS: {
+    case AREA_MOUNTAINS: {
         return PORTAL_BIT_WHITE;
     } break;
     default: {
@@ -43,55 +43,52 @@ Portal_Bits portal_env_color(Level_Environment env) {
 }
 
 void portal_init(State *state) {
-    state->portal.linear_disappearance = 1.0f;
-    state->portal.smooth_disappearance = 1.0f;
+    state->portal_linear_disappearance = 1.0f;
+    state->portal_smooth_disappearance = 1.0f;
     Image image = GenImageColor(1, 1, WHITE);
-    state->portal.texture = LoadTextureFromImage(image);
-    SetShapesTexture(state->portal.texture, (Rectangle){ 0.0f, 0.0f, 1.0f, 1.0f });
-    state->portal.shader = LoadShader((void *)0, "./src/shaders/portal.fs");
+    state->portal_texture = LoadTextureFromImage(image);
+    SetShapesTexture(state->portal_texture, (Rectangle){ 0.0f, 0.0f, 1.0f, 1.0f });
+    state->portal_shader = LoadShader((void *)0, "./src/shaders/portal.fs");
 }
 
 void portal_cleanup(State *state) {
-    UnloadTexture(state->portal.texture);
-    UnloadShader(state->portal.shader);
+    UnloadTexture(state->portal_texture);
+    UnloadShader(state->portal_shader);
 }
 
-void portal_setup(State *state, Portal_Bits flags) {
-    Portal *p = &state->portal;
-    p->flags = flags;
-    p->color.r = has_flag(flags, PORTAL_BIT_RED) * 255;
-    p->color.g = has_flag(flags, PORTAL_BIT_GREEN) * 255;
-    p->color.b = has_flag(flags, PORTAL_BIT_BLUE) * 255;
-    p->color.a = 1.0f;
-    p->timer = 0.0f;
+void portal_setup(State *state, Portal_Bits bits) {
+    state->portal_bits = bits;
+    state->portal_color.r = has_flag(bits, PORTAL_BIT_RED) * 255;
+    state->portal_color.g = has_flag(bits, PORTAL_BIT_GREEN) * 255;
+    state->portal_color.b = has_flag(bits, PORTAL_BIT_BLUE) * 255;
+    state->portal_color.a = 1.0f;
+    state->portal_timer = 0.0f;
 }
 
 bool portal_appear(State *state) {
     bool completed = false;
-    Portal *p = &state->portal;
-    p->linear_disappearance -= PORTAL_APPEAR_SPEED * state->delta_time;
-    if (p->linear_disappearance < 0.0f) {
-        p->linear_disappearance = 0.0f;
+    state->portal_linear_disappearance -= PORTAL_APPEAR_SPEED * state->delta_time;
+    if (state->portal_linear_disappearance < 0.0f) {
+        state->portal_linear_disappearance = 0.0f;
         completed = true;
     }
-    update_smooth_disappearance(p);
+    update_smooth_disappearance(state);
     return completed;
 }
 
 bool portal_disappear(State *state) {
     bool completed = false;
-    Portal *p = &state->portal;
-    p->linear_disappearance += PORTAL_DISAPPEAR_SPEED * state->delta_time;
-    if (p->linear_disappearance > 1.0f) {
-        p->linear_disappearance = 1.0f;
+    state->portal_linear_disappearance += PORTAL_DISAPPEAR_SPEED * state->delta_time;
+    if (state->portal_linear_disappearance > 1.0f) {
+        state->portal_linear_disappearance = 1.0f;
         completed = true;
     }
-    update_smooth_disappearance(p);
+    update_smooth_disappearance(state);
     return completed;
 }
 
 bool portal_inhale(State *state) {
-    if (state->player.state == PLAYER_STATE_INHALED_BY_PORTAL) {
+    if (state->player_state == PLAYER_STATE_INHALED_BY_PORTAL) {
         return false;
     }
     for (int i = 0; i < BIRD_CAPACITY; i++) {
@@ -126,12 +123,10 @@ bool portal_inhale_object(float *obj_position, float obj_step, float portal_posi
 }
 
 bool portal_exhale(State *state) {
-    Portal *p = &state->portal;
-    p->timer -= state->delta_time;
-    if (p->timer <= 0.0f) {
-        p->timer = PORTAL_EXHALE_RATE;
+    state->portal_timer -= state->delta_time;
+    if (state->portal_timer <= 0.0f) {
+        state->portal_timer = PORTAL_EXHALE_RATE;
         bool all_objects_out = true;
-
         for (int i = 0; i < BIRD_CAPACITY; i++) {
             switch (state->birds[i].state) {
             case BIRD_STATE_INSIDE_PORTAL: {
@@ -144,9 +139,9 @@ bool portal_exhale(State *state) {
             default: break;
             }
         }
-        switch (state->player.state) {
+        switch (state->player_state) {
         case PLAYER_STATE_INSIDE_PORTAL: {
-            state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
+            state->player_state = PLAYER_STATE_EXHALED_BY_PORTAL;
             return false;
         } break;
         case PLAYER_STATE_EXHALED_BY_PORTAL: {
@@ -160,40 +155,39 @@ bool portal_exhale(State *state) {
 }
 
 void portal_render(State *state) {
-    Portal *p = &state->portal;
-    BeginShaderMode(p->shader);
+    BeginShaderMode(state->portal_shader);
 
     { // Resolution
-        int loc = GetShaderLocation(p->shader, "resolution");
+        int loc = GetShaderLocation(state->portal_shader, "resolution");
         Vector2 resolution = {state->game_width, state->game_height };
         void *val = &resolution;
-        SetShaderValue(p->shader, loc, val, SHADER_UNIFORM_VEC2);
+        SetShaderValue(state->portal_shader, loc, val, SHADER_UNIFORM_VEC2);
     }
 
     { // Time
-        int loc = GetShaderLocation(p->shader, "time");
+        int loc = GetShaderLocation(state->portal_shader, "time");
         float time = GetTime();
         void *val = &time;
-        SetShaderValue(p->shader, loc, val, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(state->portal_shader, loc, val, SHADER_UNIFORM_FLOAT);
     }
 
     { // Direction
-        int loc = GetShaderLocation(p->shader, "direction");
+        int loc = GetShaderLocation(state->portal_shader, "direction");
         float direction = 0.0f;
-        if (has_flag(p->flags, PORTAL_BIT_INHALE)) {
+        if (has_flag(state->portal_bits, PORTAL_BIT_INHALE)) {
             direction = 1.0f;
-        } else if (has_flag(p->flags, PORTAL_BIT_EXHALE)) {
+        } else if (has_flag(state->portal_bits, PORTAL_BIT_EXHALE)) {
             direction = -1.0f;
         }
         void *val = &direction;
-        SetShaderValue(p->shader, loc, val, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(state->portal_shader, loc, val, SHADER_UNIFORM_FLOAT);
     }
 
     { // Disappearance
-        int loc = GetShaderLocation(p->shader, "disappearance");
-        float disappearance = p->smooth_disappearance;
+        int loc = GetShaderLocation(state->portal_shader, "disappearance");
+        float disappearance = state->portal_smooth_disappearance;
         void *val = &disappearance;
-        SetShaderValue(p->shader, loc, val, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(state->portal_shader, loc, val, SHADER_UNIFORM_FLOAT);
     }
 
     Vector2 portal_radius = {
@@ -207,7 +201,7 @@ void portal_render(State *state) {
         .height = portal_radius.y * 2,
     };
     Vector2 origin = { 0.5f, 0.5f };
-    DrawRectanglePro(rec, origin, 0.0f, p->color);
+    DrawRectanglePro(rec, origin, 0.0f, state->portal_color);
 
     EndShaderMode();
 }

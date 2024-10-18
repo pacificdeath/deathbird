@@ -12,7 +12,8 @@
 
 #define ATLAS_PADDING 1
 
-#define LEVEL_ENV_TEX_SIZE 128.0f
+#define AREA_TEXTURE_SIZE 128.0f
+
 #define LEVEL_BASE_BIRD_TOTAL 40
 #define LEVEL_MIN_RANDOM_BIRD_AMOUNT 0
 #define LEVEL_MAX_RANDOM_BIRD_AMOUNT 10
@@ -22,8 +23,8 @@
 #define LEVELS_BEFORE_MIN_FREQUENCY 31
 #define LEVEL_MIN_RANDOM_BIRD_FREQUENCY 0.0f
 #define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
-#define LEVEL_CURRENT_ROUND_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
-#define LEVEL_CURRENT_ROUND_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
+#define LEVEL_IDX_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
+#define LEVEL_IDX_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 #define LEVEL_SCORE_BAR_BG_COLOR ((Color) { 0, 32, 0, 128 })
 #define LEVEL_SCORE_BAR_FILL_FG_COLOR ((Color) { 0, 255, 0, 128 })
 #define LEVEL_SCORE_BAR_PREVIEW_FILL_FG_COLOR ((Color) { 0, 255, 0, 255 })
@@ -68,17 +69,14 @@
 #define BIRD_VERTICAL_FREEDOM 0.7f
 #define BIRD_GIANT_SPLASH_RADIUS 1.2f
 
-#define BIRD_COMPUTER_FONT "bios.ttf"
-#define BIRD_COMPUTER_FONT_SIZE 250
-#define BIRD_COMPUTER_BG_COLOR ((Color) { 0, 0, 192, 255 })
-#define BIRD_COMPUTER_CURSOR_BG_COLOR ((Color) { 255, 0, 0, 255 })
-#define BIRD_COMPUTER_FG_COLOR ((Color) { 255, 255, 255, 255 })
-#define BIRD_COMPUTER_TEXT_COLOR ((Color) { 255, 255, 0, 255 })
-#define BIRD_COMPUTER_ACTIVE_LEVEL_COLOR ((Color) { 0, 255, 0, 255 })
-#define BIRD_COMPUTER_HEADER_SIZE 0.1
-#define BIRD_COMPUTER_LINE_COUNT 8
-#define BIRD_COMPUTER_OPTION_NAME_MAX_LENGTH 48
-#define BIRD_COMPUTER_SHOP_CAPACITY 32
+#define MENU_FONT "bios.ttf"
+#define MENU_FONT_SIZE 250
+#define MENU_BG_COLOR ((Color) { 0, 0, 192, 255 })
+#define MENU_CURSOR_BG_COLOR ((Color) { 255, 0, 0, 255 })
+#define MENU_FG_COLOR ((Color) { 255, 255, 255, 255 })
+#define MENU_TEXT_COLOR ((Color) { 255, 255, 0, 255 })
+#define MENU_ACTIVE_LEVEL_COLOR ((Color) { 0, 255, 0, 255 })
+#define MENU_LINE_COUNT 8
 
 #define FADER_MAX 255
 #define FADER_MIN 0
@@ -94,7 +92,7 @@
 #define OPAQUE (Color){255,255,255,255}
 #define DEATH_SOUND_AMOUNT 8
 
-#ifdef DEBUG
+#if DEBUG
 #include "stdio.h"
 #define dbgi(i) printf("%f Deathbird: %i\n", (float)(GetTime()), i)
 #define dbgf(f) printf("%f Deathbird: %f\n", (float)(GetTime()), f)
@@ -110,20 +108,20 @@ typedef unsigned short uint16;
 typedef unsigned int uint;
 
 typedef enum Tex {
-    TEX_ENV_NIGHT_SKY,
-    TEX_ENV_OCEAN,
-    TEX_ENV_HILLS,
-    TEX_ENV_TREES,
-    TEX_ENV_DAY_SKY,
-    TEX_ENV_CLOUDS,
-    TEX_ENV_MEADOWS,
-    TEX_ENV_FENCE,
-    TEX_ENV_WINTER_SKY,
-    TEX_ENV_MOUNTAINS,
-    TEX_ENV_WINTER_HILLS,
-    TEX_ENV_WINTER_TREES,
-    TEX_ENV_SNOW,
-    TEX_ENV_WEIRD_WALL,
+    TEX_AREA_NIGHT_SKY,
+    TEX_AREA_OCEAN,
+    TEX_AREA_HILLS,
+    TEX_AREA_TREES,
+    TEX_AREA_DAY_SKY,
+    TEX_AREA_CLOUDS,
+    TEX_AREA_MEADOWS,
+    TEX_AREA_FENCE,
+    TEX_AREA_WINTER_SKY,
+    TEX_AREA_MOUNTAINS,
+    TEX_AREA_WINTER_HILLS,
+    TEX_AREA_WINTER_TREES,
+    TEX_AREA_SNOW,
+    TEX_AREA_WEIRD_WALL,
     TEX_GIANT_BIRD_1,
     TEX_GIANT_BIRD_2,
     TEX_GIANT_BIRD_3,
@@ -179,42 +177,14 @@ typedef enum Tex {
     TEX_TOTAL,
 } Tex;
 
-typedef struct Tex_Atlas_Offset {
-    uint16 x;
-    uint16 y;
-    uint16 size;
-} Tex_Atlas_Offset;
-
-typedef struct Scroll_Env {
-    Tex tex;
-    uint8 horizontal_textures;
-    float horizontal_speed;
-    uint8 vertical_textures;
-    float vertical_speed;
-    Vector2 scroll;
-    uint8 opacity;
-} Scroll_Env;
-
-typedef enum Level_Environment {
-    LEVEL_ENVIRONMENT_NONE = 0,
-    LEVEL_ENVIRONMENT_FOREST,
-    LEVEL_ENVIRONMENT_MEADOWS,
-    LEVEL_ENVIRONMENT_MOUNTAINS,
-    LEVEL_ENVIRONMENT_RED_BIRD_NEST,
-    LEVEL_ENVIRONMENT_TOTAL,
-} Level_Environment;
-
-typedef struct Level_Data {
-    Level_Environment environment;
-    uint8 scroll_env_amount;
-    uint required_score;
-    uint total_birds;
-    float bird_frequency;
-    float bird_timer;
-    uint requested_birds;
-    uint spawned_birds;
-    uint passed_birds;
-} Level_Data;
+typedef enum Area {
+    AREA_NONE = 0,
+    AREA_FOREST,
+    AREA_MEADOWS,
+    AREA_MOUNTAINS,
+    AREA_RED_BIRD_NEST,
+    AREA_TOTAL,
+} Area;
 
 typedef enum Player_State {
     PLAYER_STATE_NONE = 0,
@@ -236,37 +206,6 @@ typedef enum Bird_Type {
     BIRD_TYPES_TOTAL,
 } Bird_Type;
 
-typedef struct Player {
-    Player_State state;
-    Vector2 position;
-    float rotation;
-    uint16 current_input_key;
-    uint level_score;
-    Bird_Type obliterated_birds[BIRD_TYPES_TOTAL];
-    uint bird_multiplier;
-    uint bird_multiplier_display;
-    float bird_multiplier_timer;
-    uint highest_multipliers[BIRD_COMPUTER_LINE_COUNT]; // exclude 1x multiplier
-} Player;
-
-typedef struct Bird_Alive {
-    uint8 health;
-    uint8 current_tex;
-    Vector2 collision_bounds;
-    float move_speed;
-    float anim_time;
-    float damage_timer;
-} Bird_Alive;
-
-typedef struct Bird_Dead {
-    uint8 blood_idx;
-    float anim_time;
-    Vector2 death_velocities[BIRD_DEATH_PARTS];
-    Vector2 death_positions[BIRD_DEATH_PARTS];
-    float death_angular_velocities[BIRD_DEATH_PARTS];
-    float death_rotations[BIRD_DEATH_PARTS];
-} Bird_Dead;
-
 typedef enum Bird_State {
     BIRD_STATE_NONE = 0,
     BIRD_STATE_AVAILABLE,
@@ -277,43 +216,11 @@ typedef enum Bird_State {
     BIRD_STATE_EXHALED_BY_PORTAL,
 } Bird_State;
 
-typedef struct Bird {
-    Bird_Type type;
-    Bird_State state;
-    Vector2 position;
-    union {
-        Bird_Alive alive;
-        Bird_Dead dead;
-    };
-} Bird;
-
-typedef enum Bird_Computer_State {
-    BIRD_COMPUTER_STATE_DEFAULT,
-    BIRD_COMPUTER_STATE_SHOP,
-    BIRD_COMPUTER_STATE_INFO_BOX,
-} Bird_Computer_State;
-
-typedef struct Bird_Computer_Dimensions {
-    float font_size;
-    float x_fract;
-    float y_fract;
-    float header_size;
-    float line_section_size;
-    float footer_size;
-    float line_size;
-} Bird_Computer_Dimensions;
-
-typedef struct Bird_Computer {
-    Bird_Computer_State state;
-    Font font;
-    uint8 option_idx;
-    uint8 option_count;
-    uint8 option_area_offset;
-    uint8 option_idx_results;
-    uint8 option_idx_continue;
-    uint8 option_idx_multipliers;
-    uint16 discovered_levels;
-} Bird_Computer;
+typedef enum Menu_State {
+    MENU_STATE_DEFAULT,
+    MENU_STATE_SHOP,
+    MENU_STATE_INFO_BOX,
+} Menu_State;
 
 typedef enum Fader_State {
     FADER_STATE_NONE = 0,
@@ -322,12 +229,6 @@ typedef enum Fader_State {
     FADER_STATE_OUT,
     FADER_STATE_OUT_COMPLETE,
 } Fader_State;
-
-
-typedef struct Fader {
-    Fader_State state;
-    float fade_level;
-} Fader;
 
 typedef enum Portal_Bits {
     PORTAL_BIT_NONE = 0,
@@ -355,37 +256,66 @@ typedef enum Portal_Bits {
     )
 } Portal_Bits;
 
-typedef struct Portal {
-    Portal_Bits flags;
-    Shader shader;
-    Texture texture;
-    float linear_disappearance;
-    float smooth_disappearance;
-    Color color;
-    float timer;
-} Portal;
+typedef enum Global_State {
+    GLOBAL_STATE_MENU = 0,
+    GLOBAL_STATE_MENU_FADE_OUT,
+    GLOBAL_STATE_GAME_FADE_IN,
+    GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR,
+    GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE,
+    GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR,
+    GLOBAL_STATE_GAME,
+    GLOBAL_STATE_POST_GAME_PORTAL_APPEAR,
+    GLOBAL_STATE_POST_GAME_PORTAL_INHALE,
+    GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR,
+    GLOBAL_STATE_GAME_FADE_OUT,
+    GLOBAL_STATE_MENU_FADE_IN,
+} Global_State;
 
-typedef enum World_State {
-    WORLD_STATE_MENU = 0,
-    WORLD_STATE_MENU_FADE_OUT,
-    WORLD_STATE_GAME_FADE_IN,
-    WORLD_STATE_PRE_GAME_PORTAL_APPEAR,
-    WORLD_STATE_PRE_GAME_PORTAL_EXHALE,
-    WORLD_STATE_PRE_GAME_PORTAL_DISAPPEAR,
-    WORLD_STATE_GAME,
-    WORLD_STATE_POST_GAME_PORTAL_APPEAR,
-    WORLD_STATE_POST_GAME_PORTAL_INHALE,
-    WORLD_STATE_POST_GAME_PORTAL_DISAPPEAR,
-    WORLD_STATE_GAME_FADE_OUT,
-    WORLD_STATE_MENU_FADE_IN,
-} World_State;
+typedef struct Atlas_Texture {
+    uint16 x;
+    uint16 y;
+    uint16 size;
+} Atlas_Texture;
 
+typedef struct Texture_Scroller {
+    Tex tex;
+    uint8 horizontal_textures;
+    float horizontal_speed;
+    uint8 vertical_textures;
+    float vertical_speed;
+    Vector2 scroll;
+    uint8 opacity;
+} Texture_Scroller;
+
+typedef struct Bird {
+    Bird_Type type;
+    Bird_State state;
+    Vector2 position;
+    float anim_time;
+    union {
+        struct {
+            uint8 health;
+            uint8 current_tex;
+            Vector2 collision_bounds;
+            float move_speed;
+            float damage_timer;
+        } alive;
+        struct {
+            uint8 blood_idx;
+            Vector2 velocities[BIRD_DEATH_PARTS];
+            Vector2 positions[BIRD_DEATH_PARTS];
+            float angular_velocities[BIRD_DEATH_PARTS];
+            float rotations[BIRD_DEATH_PARTS];
+        } dead;
+    };
+} Bird;
 
 typedef struct State {
+    Global_State global_state;
+
     uint window_width;
     uint window_height;
 
-    World_State world_state;
     uint game_width;
     uint game_height;
     uint game_left;
@@ -395,32 +325,69 @@ typedef struct State {
     uint game_center_x;
     uint game_center_y;
 
-    uint current_round;
-    Level_Data current_level_data;
-    Level_Data next_level_data;
-    Scroll_Env scroll_envs[8];
-
-    Bird_Computer bird_computer;
-
-    Texture tex_atlas;
-    Shader bird_damage_shader;
-    Tex_Atlas_Offset tex_atlas_offsets[TEX_TOTAL];
-
     Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
 
-    Player player;
+    Texture atlas;
+    Atlas_Texture atlas_textures[TEX_TOTAL];
+
+    uint16 areas_discovered;
+
+    Texture_Scroller tex_scrollers[8];
+
+    uint level_idx;
+    uint level_score;
+
+    struct {
+        Area area;
+        uint8 tex_scroller_amount;
+        uint required_score;
+        uint total_birds;
+        float bird_frequency;
+        float bird_timer;
+        uint requested_birds;
+        uint spawned_birds;
+        uint passed_birds;
+    } level_current_data, next_level_data;
+
+    Menu_State menu_state;
+    Font menu_font;
+    uint8 menu_option_idx;
+    uint8 menu_option_count;
+    uint8 menu_option_area_offset;
+    uint8 menu_option_idx_results;
+    uint8 menu_option_idx_continue;
+    uint8 menu_option_idx_multipliers;
+
+    Player_State player_state;
+    Vector2 player_position;
+    float player_rotation;
+    uint16 player_current_input;
 
     Bird birds[BIRD_CAPACITY];
+    Shader bird_damage_shader;
     uint birds_in_use;
+    uint bird_multiplier;
+    uint bird_multiplier_display;
+    float bird_multiplier_timer;
+    Bird_Type birds_destroyed[BIRD_TYPES_TOTAL];
+    uint bird_highest_multipliers[MENU_LINE_COUNT];
 
-    Fader fader;
-    Portal portal;
+    Fader_State fader_state;
+    float fader_level;
+
+    Shader portal_shader;
+    Portal_Bits portal_bits;
+    Texture portal_texture;
+    float portal_linear_disappearance;
+    float portal_smooth_disappearance;
+    Color portal_color;
+    float portal_timer;
 
     float scale_multiplier;
     float delta_time;
 } State;
 
-#ifdef DEBUG
+#if DEBUG
 Vector2 to_pixel_position(State *state, Vector2 game_position);
 Vector2 to_pixel_size(State *state, Vector2 game_size);
 #endif
@@ -433,8 +400,8 @@ Vector2 vec2_normalized(float x, float y);
 Vector2 vec2_direction(Vector2 from, Vector2 to);
 float vec2_distance(Vector2 a, Vector2 b);
 
-void tex_atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color);
-void tex_atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale, Vector2 origin, Color color);
+void atlas_draw(State *state, Tex tex, Vector2 position, float rotation, float scale, Color color);
+void atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, float scale, Vector2 origin, Color color);
 
 Vector2 portal_get_position(State *state);
 float portal_distance_to_center_ratio(State *state, Vector2 position);
