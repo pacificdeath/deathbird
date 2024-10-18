@@ -184,50 +184,17 @@ typedef enum Area {
     AREA_TOTAL,
 } Area;
 
-typedef enum Player_State {
-    PLAYER_STATE_NONE = 0,
-    PLAYER_STATE_EXHALED_BY_PORTAL,
-    PLAYER_STATE_GROUNDED,
-    PLAYER_STATE_UP,
-    PLAYER_STATE_DOWN,
-    PLAYER_STATE_INHALED_BY_PORTAL,
-    PLAYER_STATE_INSIDE_PORTAL,
-} Player_State;
+typedef enum Shop_Item {
+    SHOP_ITEM_PORTAL_YELLOW,
+    SHOP_ITEM_PORTAL_WHITE,
+    SHOP_ITEM_TOTAL
+} Shop_Item;
 
-typedef enum Bird_Type {
-    BIRD_TYPE_NONE,
-    BIRD_TYPE_WHITE,
-    BIRD_TYPE_GIANT,
-    BIRD_TYPE_YELLOW,
-    BIRD_TYPE_BROWN,
-    BIRD_TYPE_RED,
-    BIRD_TYPES_TOTAL,
-} Bird_Type;
-
-typedef enum Bird_State {
-    BIRD_STATE_NONE = 0,
-    BIRD_STATE_AVAILABLE,
-    BIRD_STATE_ALIVE,
-    BIRD_STATE_DEAD,
-    BIRD_STATE_INHALED_BY_PORTAL,
-    BIRD_STATE_INSIDE_PORTAL,
-    BIRD_STATE_EXHALED_BY_PORTAL,
-} Bird_State;
-
-typedef enum Menu_State {
-    MENU_STATE_DEFAULT = 0,
-    MENU_STATE_SHOP,
-    MENU_STATE_INFO_BOX,
-    MENU_STATE_GAME_OVER,
-} Menu_State;
-
-typedef enum Fader_State {
-    FADER_STATE_NONE = 0,
-    FADER_STATE_IN,
-    FADER_STATE_IN_COMPLETE,
-    FADER_STATE_OUT,
-    FADER_STATE_OUT_COMPLETE,
-} Fader_State;
+typedef enum Shop_Item_State {
+    SHOP_ITEM_STATE_UNAVAILABLE = 0,
+    SHOP_ITEM_STATE_AVAILABLE,
+    SHOP_ITEM_STATE_OWNED,
+} Shop_Item_State;
 
 typedef enum Portal_Bits {
     PORTAL_BIT_NONE = 0,
@@ -255,21 +222,6 @@ typedef enum Portal_Bits {
     )
 } Portal_Bits;
 
-typedef enum Global_State {
-    GLOBAL_STATE_MENU = 0,
-    GLOBAL_STATE_MENU_FADE_OUT,
-    GLOBAL_STATE_GAME_FADE_IN,
-    GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR,
-    GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE,
-    GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR,
-    GLOBAL_STATE_GAME,
-    GLOBAL_STATE_POST_GAME_PORTAL_APPEAR,
-    GLOBAL_STATE_POST_GAME_PORTAL_INHALE,
-    GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR,
-    GLOBAL_STATE_GAME_FADE_OUT,
-    GLOBAL_STATE_MENU_FADE_IN,
-} Global_State;
-
 typedef struct Atlas_Texture {
     uint16 x;
     uint16 y;
@@ -286,9 +238,27 @@ typedef struct Texture_Scroller {
     uint8 opacity;
 } Texture_Scroller;
 
+typedef enum Bird_Type {
+    BIRD_TYPE_NONE,
+    BIRD_TYPE_WHITE,
+    BIRD_TYPE_GIANT,
+    BIRD_TYPE_YELLOW,
+    BIRD_TYPE_BROWN,
+    BIRD_TYPE_RED,
+    BIRD_TYPES_TOTAL,
+} Bird_Type;
+
 typedef struct Bird {
+    enum {
+        BIRD_STATE_NONE = 0,
+        BIRD_STATE_AVAILABLE,
+        BIRD_STATE_ALIVE,
+        BIRD_STATE_DEAD,
+        BIRD_STATE_INHALED_BY_PORTAL,
+        BIRD_STATE_INSIDE_PORTAL,
+        BIRD_STATE_EXHALED_BY_PORTAL,
+    } state;
     Bird_Type type;
-    Bird_State state;
     Vector2 position;
     float anim_time;
     union {
@@ -310,7 +280,20 @@ typedef struct Bird {
 } Bird;
 
 typedef struct State {
-    Global_State global_state;
+    enum {
+        GLOBAL_STATE_MENU = 0,
+        GLOBAL_STATE_MENU_FADE_OUT,
+        GLOBAL_STATE_GAME_FADE_IN,
+        GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR,
+        GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE,
+        GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR,
+        GLOBAL_STATE_GAME,
+        GLOBAL_STATE_POST_GAME_PORTAL_APPEAR,
+        GLOBAL_STATE_POST_GAME_PORTAL_INHALE,
+        GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR,
+        GLOBAL_STATE_GAME_FADE_OUT,
+        GLOBAL_STATE_MENU_FADE_IN,
+    } global_state;
 
     uint window_width;
     uint window_height;
@@ -348,16 +331,32 @@ typedef struct State {
         uint passed_birds;
     } level_current_data, next_level_data;
 
-    Menu_State menu_state;
+    enum {
+        MENU_STATE_DEFAULT = 0,
+        MENU_STATE_INFO_BOX,
+        MENU_STATE_SHOP,
+        MENU_STATE_SHOP_BUY_NO,
+        MENU_STATE_SHOP_BUY_YES,
+        MENU_STATE_GAME_OVER,
+    } menu_state;
     Font menu_font;
     uint8 menu_option_idx;
     uint8 menu_option_count;
-    uint8 menu_option_area_offset;
-    uint8 menu_option_idx_results;
-    uint8 menu_option_idx_continue;
-    uint8 menu_option_idx_multipliers;
+    uint8 menu_option_offset;
+    uint8 menu_suboption_idx;
+    uint8 menu_suboption_offset;
+    uint8 menu_suboption_count;
+    Shop_Item_State shop_items[SHOP_ITEM_TOTAL];
 
-    Player_State player_state;
+    enum {
+        PLAYER_STATE_NONE = 0,
+        PLAYER_STATE_EXHALED_BY_PORTAL,
+        PLAYER_STATE_GROUNDED,
+        PLAYER_STATE_UP,
+        PLAYER_STATE_DOWN,
+        PLAYER_STATE_INHALED_BY_PORTAL,
+        PLAYER_STATE_INSIDE_PORTAL,
+    } player_state;
     Vector2 player_position;
     float player_rotation;
     uint16 player_current_input;
@@ -372,9 +371,15 @@ typedef struct State {
     uint bird_highest_multipliers[MENU_LINE_COUNT];
 
     uint red_bird_spawn_idx;
-    uint16 red_birds_destroyed_bits;
+    uint8 red_birds_destroyed_bits;
 
-    Fader_State fader_state;
+    enum Fader_State {
+        FADER_STATE_NONE = 0,
+        FADER_STATE_IN,
+        FADER_STATE_IN_COMPLETE,
+        FADER_STATE_OUT,
+        FADER_STATE_OUT_COMPLETE,
+    } fader_state;
     float fader_level;
 
     Shader portal_shader;
