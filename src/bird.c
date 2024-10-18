@@ -136,6 +136,24 @@ static void render_bird_parts_with_portal_influence(State *state, Bird *bird) {
     }
 }
 
+static bool bird_is_red(State *state) {
+    bool is_red_bird_spawn_idx = state->level_current_data.spawned_birds == state->red_bird_spawn_idx;
+    if (!is_red_bird_spawn_idx) {
+        return false;
+    }
+    int flag = 1 << state->level_current_data.area;
+    bool red_bird_destroyed = has_flag(state->red_birds_destroyed_bits, flag);
+    return !red_bird_destroyed;
+}
+
+static void setup_red_bird(Bird *bird) {
+    bird->type = BIRD_TYPE_RED;
+    bird->alive.health = 1;
+    bird->alive.move_speed = 1.5f;
+    bird->alive.collision_bounds.x = 0.1f;
+    bird->alive.collision_bounds.y = 0.1f;
+}
+
 void birds_init(State *state) {
     state->bird_damage_shader = LoadShader(0, "./src/shaders/bird_damage.fs");
 }
@@ -149,6 +167,7 @@ void bird_level_setup(State *state) {
         state->birds[i].state = BIRD_STATE_AVAILABLE;
     }
     state->birds_in_use = 0;
+    state->red_bird_spawn_idx = GetRandomValue(0, state->level_current_data.total_birds - 1);
 }
 
 void birds_update(State *state) {
@@ -169,47 +188,68 @@ void birds_update(State *state) {
             if (!we_need_this_bird) {
                 break;
             }
-            state->birds_in_use++;
-            state->level_current_data.spawned_birds++;
+
+            bird->state = BIRD_STATE_ALIVE;
             bird->position.x = BIRD_RESET_RIGHT;
             bird->position.y = randf(-BIRD_VERTICAL_FREEDOM, BIRD_VERTICAL_FREEDOM);
             bird->anim_time = 0.0f;
-            bird->alive.move_speed = randf(BIRD_MIN_MOVE_SPEED, BIRD_MAX_MOVE_SPEED);
+
+            bird->alive.current_tex = 0;
             bird->alive.damage_timer = 0.0f;
+
             switch (state->level_current_data.area) {
             default:
             case AREA_NONE: {
                 bird->type = BIRD_TYPE_GIANT;
                 bird->alive.health = 255;
+                bird->alive.move_speed = randf(1.5f, 2.5f);
                 bird->alive.collision_bounds = (Vector2){0};
             } break;
             case AREA_FOREST: {
+                if (bird_is_red(state)) {
+                    setup_red_bird(bird);
+                    break;
+                }
                 if (state->level_current_data.spawned_birds % 10 == 0) {
                     bird->type = BIRD_TYPE_GIANT;
                     bird->alive.health = 2;
+                    bird->alive.move_speed = randf(0.2f, 0.5f);
                     bird->alive.collision_bounds.x = 0.2f;
                     bird->alive.collision_bounds.y = 0.2f;
                 } else {
                     bird->type = BIRD_TYPE_WHITE;
                     bird->alive.health = 1;
+                    bird->alive.move_speed = randf(0.2f, 0.8f);
                     bird->alive.collision_bounds.x = 0.1f;
                     bird->alive.collision_bounds.y = 0.1f;
                 }
             } break;
             case AREA_MEADOWS: {
+                if (bird_is_red(state)) {
+                    setup_red_bird(bird);
+                    break;
+                }
                 bird->type = BIRD_TYPE_YELLOW;
                 bird->alive.health = 1;
+                bird->alive.move_speed = randf(0.2f, 0.8f);
                 bird->alive.collision_bounds.x = 0.1f;
                 bird->alive.collision_bounds.y = 0.1f;
             } break;
             case AREA_MOUNTAINS: {
+                if (bird_is_red(state)) {
+                    setup_red_bird(bird);
+                    break;
+                }
                 bird->type = BIRD_TYPE_BROWN;
                 bird->alive.health = 1;
+                bird->alive.move_speed = randf(0.2f, 0.8f);
                 bird->alive.collision_bounds.x = 0.1f;
                 bird->alive.collision_bounds.y = 0.1f;
             } break;
             }
-            bird->state = BIRD_STATE_ALIVE;
+
+            state->birds_in_use++;
+            state->level_current_data.spawned_birds++;
         } break;
         case BIRD_STATE_ALIVE: {
             bird->position.x -= bird->alive.move_speed * state->delta_time;
@@ -300,7 +340,6 @@ void birds_update(State *state) {
         case BIRD_STATE_EXHALED_BY_PORTAL: {
             bool all_off_screen = true;
             float out_of_bounds = 0.2;
-            Vector2 portal_position = portal_get_position(state);
             for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
                 float velocity_gain = 1.0f + (PORTAL_EMIT_MULTIPLIER * state->delta_time);
                 bird->dead.velocities[j].x *= velocity_gain;
@@ -335,6 +374,10 @@ void birds_update(State *state) {
 bool bird_try_destroy(State *state, Bird *bird, Vector2 from) {
     bird->alive.health--;
     if (bird->alive.health <= 0) {
+        if (bird->type == BIRD_TYPE_RED) {
+            int flag = 1 << state->level_current_data.area;
+            state->red_birds_destroyed_bits |= flag;
+        }
         state->bird_multiplier++;
         state->birds_destroyed[bird->type]++;
         Vector2 master_velocity = vec2_normalized(
@@ -394,8 +437,7 @@ void birds_render(State *state) {
     for (int i = 0; i < BIRD_CAPACITY; i++) {
         Bird *bird = &state->birds[i];
         switch (bird->state) {
-        case BIRD_STATE_AVAILABLE:
-            break;
+        default: break;
         case BIRD_STATE_ALIVE: {
             Tex bird_tex;
             switch (bird->type) {

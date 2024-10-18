@@ -173,10 +173,18 @@ void menu_level_setup(State *state) {
         state->menu_option_idx_multipliers = 2;
         state->menu_option_count = 3;
     }
-    state->areas_discovered |= (1 << (state->next_level_data.area - 1));
+    state->areas_discovered_bits |= (1 << (state->next_level_data.area - 1));
+}
+
+void menu_game_over_setup(State *state) {
+    state->menu_state = MENU_STATE_GAME_OVER;
 }
 
 void menu_update(State *state) {
+    if (state->menu_state == MENU_STATE_GAME_OVER) {
+        return;
+    }
+
     if (IsKeyPressed(KEY_DOWN) && state->menu_option_idx < (state->menu_option_count - 1)) {
         if (state->menu_option_idx < MENU_LINE_COUNT - 1) {
             state->menu_option_idx++;
@@ -288,6 +296,16 @@ void menu_render(State *state) {
                     }
                     sprintf(buffer, "Birds obliterated: %i/%i", obliterated_birds_total, state->level_current_data.total_birds);
                     draw_info_text_line(state, &dimensions, buffer, info_line_idx);
+                    info_line_idx++;
+                    int red_birds_destroyed = 0;
+                    for (int i = AREA_FOREST; i <= AREA_MOUNTAINS; i++) {
+                        int flag = 1 << i;
+                        if (has_flag(state->red_birds_destroyed_bits, flag)) {
+                            red_birds_destroyed++;
+                        }
+                    };
+                    sprintf(buffer, "Red birds: %i/3", red_birds_destroyed);
+                    draw_info_text_line(state, &dimensions, buffer, info_line_idx);
                 }
             } else if (option_idx == state->menu_option_idx_continue) {
                 draw_option_text(state, &dimensions, "Go to next level", option_idx);
@@ -305,7 +323,7 @@ void menu_render(State *state) {
                             Tex tex;
                             int tex_amount = 0;
                             uint16 discovered_level_bit = (1 << cell_idx);
-                            if (has_flag(state->areas_discovered, discovered_level_bit)) {
+                            if (has_flag(state->areas_discovered_bits, discovered_level_bit)) {
                                 switch (cell_idx) {
                                 case 0: {
                                     tex = TEX_AREA_NIGHT_SKY;
@@ -420,6 +438,28 @@ void menu_render(State *state) {
                 "person and that is true";
             draw_info_box(state, &dimensions, text);
         }
+    } break;
+    case MENU_STATE_GAME_OVER: {
+        // background
+        DrawRectangleRec(game_rectangle(state), BLACK);
+
+        char *text = "You are a horrible person";
+        const Vector2 text_dimensions = MeasureTextEx(state->menu_font, text, dimensions.font_size, 0.0f);
+        Vector2 text_origin = {0};
+        Vector2 position = {
+            .x = state->game_center_x - (text_dimensions.x / 2),
+            .y = state->game_center_y - (text_dimensions.y / 2)
+        };
+        DrawTextPro(
+            state->menu_font,
+            text,
+            position,
+            text_origin,
+            0.0f,
+            dimensions.font_size,
+            0.0f,
+            WHITE
+        );
     } break;
     }
 }

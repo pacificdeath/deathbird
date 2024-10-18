@@ -30,8 +30,8 @@ Rectangle game_rectangle(State *state) {
     return (Rectangle) {
         .x = state->game_left,
         .y = state->game_top,
-        .width = state->window_width,
-        .height = state->window_height
+        .width = state->game_width,
+        .height = state->game_height
     };
 }
 
@@ -255,22 +255,28 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
-            if (level_score_reached(state)) {
-                level_setup_next(state);
-                Portal_Bits portal_color_bit = portal_area_color(state->next_level_data.area);
-                portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
-                birds_give_alive_ones_to_portal(state);
+            bool level_success = level_score_reached(state);
+            bool level_fail = birds_ran_out(state) && state->player_state == PLAYER_STATE_GROUNDED;
+            if (level_success || level_fail) {
+                if (level_success) {
+                    level_setup_next(state);
+                    Portal_Bits portal_color_bit = portal_area_color(state->next_level_data.area);
+                    portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
+                    birds_give_alive_ones_to_portal(state);
+                    menu_level_setup(state);
+                } else {
+                    // portal color bits skipped for total darkness
+                    portal_setup(state, PORTAL_BIT_INHALE);
+                    menu_game_over_setup(state);
+                }
                 state->player_state = PLAYER_STATE_INHALED_BY_PORTAL;
-                state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_APPEAR;
-            } else if (birds_ran_out(state) && state->player_state == PLAYER_STATE_GROUNDED) {
-                portal_setup(state, PORTAL_BIT_NONE);
                 state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_APPEAR;
             }
         } break;
         case GLOBAL_STATE_POST_GAME_PORTAL_APPEAR: {
             level_update(state);
-            birds_update(state);
             player_update(state);
+            birds_update(state);
             if (portal_appear(state)) {
                 state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_INHALE;
             }
@@ -293,7 +299,6 @@ int main(void) {
             level_update(state);
             player_update(state);
             if (state->fader_state == FADER_STATE_OUT_COMPLETE) {
-                menu_level_setup(state);
                 state->global_state = GLOBAL_STATE_MENU_FADE_IN;
             } else {
                 fade_out(state);

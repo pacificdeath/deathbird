@@ -50,8 +50,6 @@
 #define BIRD_DEATH_GORE_PARTS 4
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
 #define BIRD_GRAVITY 4.0f
-#define BIRD_MIN_MOVE_SPEED 0.2f
-#define BIRD_MAX_MOVE_SPEED 0.8f
 #define BIRD_ANIM_SPEED 0.1f
 #define BIRD_ANIM_TEX_AMOUNT 4
 #define BIRD_GORE_TEX_AMOUNT 2
@@ -217,9 +215,10 @@ typedef enum Bird_State {
 } Bird_State;
 
 typedef enum Menu_State {
-    MENU_STATE_DEFAULT,
+    MENU_STATE_DEFAULT = 0,
     MENU_STATE_SHOP,
     MENU_STATE_INFO_BOX,
+    MENU_STATE_GAME_OVER,
 } Menu_State;
 
 typedef enum Fader_State {
@@ -330,7 +329,7 @@ typedef struct State {
     Texture atlas;
     Atlas_Texture atlas_textures[TEX_TOTAL];
 
-    uint16 areas_discovered;
+    uint16 areas_discovered_bits;
 
     Texture_Scroller tex_scrollers[8];
 
@@ -371,6 +370,9 @@ typedef struct State {
     float bird_multiplier_timer;
     Bird_Type birds_destroyed[BIRD_TYPES_TOTAL];
     uint bird_highest_multipliers[MENU_LINE_COUNT];
+
+    uint red_bird_spawn_idx;
+    uint16 red_birds_destroyed_bits;
 
     Fader_State fader_state;
     float fader_level;
