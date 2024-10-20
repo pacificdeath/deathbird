@@ -58,6 +58,15 @@ static void get_bird_textures(Tex textures[BIRD_DEATH_PARTS], Bird_Type bird_typ
         textures[BIRD_DEATH_PARTS - 2] = TEX_YELLOW_BIRD_HEAD;
         textures[BIRD_DEATH_PARTS - 1] = TEX_BIRD_EYE;
     } break;
+    case BIRD_TYPE_UMBRELLA_ABOVE:
+    case BIRD_TYPE_UMBRELLA_UNDER: {
+        textures[BIRD_DEATH_PARTS - 6] = TEX_BIRD_GORE_1;
+        textures[BIRD_DEATH_PARTS - 5] = TEX_BIRD_GORE_2;
+        textures[BIRD_DEATH_PARTS - 4] = TEX_BIRD_GORE_1;
+        textures[BIRD_DEATH_PARTS - 3] = TEX_BIRD_EYE;
+        textures[BIRD_DEATH_PARTS - 2] = TEX_BIRD_EYE;
+        textures[BIRD_DEATH_PARTS - 1] = TEX_UMBRELLA;
+    } break;
     case BIRD_TYPE_BROWN: {
         textures[BIRD_DEATH_PARTS - 6] = TEX_BROWN_BIRD_WING;
         textures[BIRD_DEATH_PARTS - 5] = TEX_BROWN_BIRD_BODY;
@@ -86,7 +95,7 @@ static void set_bird_available(State *state, Bird *bird) {
 static void blood_animation(State* state, Bird *bird) {
     if (bird->dead.blood_idx <= BIRD_BLOOD_TEX_AMOUNT) {
         bird->anim_time += state->delta_time;
-        if (bird->anim_time > BIRD_ANIM_SPEED) {
+        if (bird->anim_time > GAME_ANIM_SPEED) {
             bird->anim_time = 0.0f;
             bird->dead.blood_idx++;
         }
@@ -122,6 +131,13 @@ static void bird_death_velocity_setup(Bird *bird, Vector2 master_velocity, float
             bird->dead.velocities[i] = (Vector2){0.0f, -0.1f};
         }
     }
+    switch (bird->type) {
+    default: break;
+    case BIRD_TYPE_UMBRELLA_UNDER: {
+        int umbrella_idx = BIRD_DEATH_PARTS - 1;
+        bird->dead.rotations[umbrella_idx] = 180.0f;
+    } break;
+    }
 }
 
 static void render_bird_parts_with_portal_influence(State *state, Bird *bird) {
@@ -136,22 +152,66 @@ static void render_bird_parts_with_portal_influence(State *state, Bird *bird) {
     }
 }
 
-static bool bird_is_red(State *state) {
+static void setup_bird_by_level(State *state, Bird *bird) {
     bool is_red_bird_spawn_idx = state->level_current_data.spawned_birds == state->red_bird_spawn_idx;
-    if (!is_red_bird_spawn_idx) {
-        return false;
+    if (is_red_bird_spawn_idx) {
+        int current_level_flag = 1 << state->level_current_data.area;
+        bool level_red_bird_destroyed = has_flag(state->red_birds_destroyed_bits, current_level_flag);
+        if (!level_red_bird_destroyed) {
+            bird->type = BIRD_TYPE_RED;
+            bird->alive.health = 1;
+            bird->alive.move_speed = 1.5f;
+            bird->alive.collision_bounds.x = 0.1f;
+            bird->alive.collision_bounds.y = 0.1f;
+            return;
+        }
     }
-    int flag = 1 << state->level_current_data.area;
-    bool red_bird_destroyed = has_flag(state->red_birds_destroyed_bits, flag);
-    return !red_bird_destroyed;
-}
-
-static void setup_red_bird(Bird *bird) {
-    bird->type = BIRD_TYPE_RED;
-    bird->alive.health = 1;
-    bird->alive.move_speed = 1.5f;
-    bird->alive.collision_bounds.x = 0.1f;
-    bird->alive.collision_bounds.y = 0.1f;
+    switch (state->level_current_data.area) {
+    default:
+    case AREA_NONE: {
+        bird->type = BIRD_TYPE_GIANT;
+        bird->alive.health = 255;
+        bird->alive.move_speed = randf(1.5f, 2.5f);
+        bird->alive.collision_bounds = (Vector2){0};
+    } return;
+    case AREA_FOREST: {
+        if (state->level_current_data.spawned_birds % 10 == 0) {
+            bird->type = BIRD_TYPE_GIANT;
+            bird->alive.health = 2;
+            bird->alive.move_speed = randf(0.2f, 0.5f);
+            bird->alive.collision_bounds.x = 0.2f;
+            bird->alive.collision_bounds.y = 0.2f;
+            return;
+        }
+        bird->type = BIRD_TYPE_WHITE;
+        bird->alive.health = 1;
+        bird->alive.move_speed = randf(0.2f, 0.8f);
+        bird->alive.collision_bounds.x = 0.1f;
+        bird->alive.collision_bounds.y = 0.1f;
+    } return;
+    case AREA_MEADOWS: {
+        if (GetRandomValue(0, 4) == 0) {
+            bird->type = (GetRandomValue(0, 1) == 0) ? BIRD_TYPE_UMBRELLA_ABOVE : BIRD_TYPE_UMBRELLA_UNDER;
+            bird->alive.health = 1;
+            bird->alive.move_speed = randf(0.2f, 0.8f);
+            bird->alive.collision_bounds.x = 0.1f;
+            bird->alive.collision_bounds.y = 0.15f;
+            return;
+        }
+        bird->type = BIRD_TYPE_YELLOW;
+        bird->alive.health = 1;
+        bird->alive.move_speed = randf(0.2f, 0.8f);
+        bird->alive.collision_bounds.x = 0.1f;
+        bird->alive.collision_bounds.y = 0.1f;
+    } return;
+    case AREA_MOUNTAINS: {
+        bird->type = BIRD_TYPE_BROWN;
+        bird->alive.health = 1;
+        bird->alive.move_speed = randf(0.2f, 0.8f);
+        bird->alive.collision_bounds.x = 0.1f;
+        bird->alive.collision_bounds.y = 0.1f;
+    } return;
+    }
 }
 
 void birds_init(State *state) {
@@ -197,56 +257,7 @@ void birds_update(State *state) {
             bird->alive.current_tex = 0;
             bird->alive.damage_timer = 0.0f;
 
-            switch (state->level_current_data.area) {
-            default:
-            case AREA_NONE: {
-                bird->type = BIRD_TYPE_GIANT;
-                bird->alive.health = 255;
-                bird->alive.move_speed = randf(1.5f, 2.5f);
-                bird->alive.collision_bounds = (Vector2){0};
-            } break;
-            case AREA_FOREST: {
-                if (bird_is_red(state)) {
-                    setup_red_bird(bird);
-                    break;
-                }
-                if (state->level_current_data.spawned_birds % 10 == 0) {
-                    bird->type = BIRD_TYPE_GIANT;
-                    bird->alive.health = 2;
-                    bird->alive.move_speed = randf(0.2f, 0.5f);
-                    bird->alive.collision_bounds.x = 0.2f;
-                    bird->alive.collision_bounds.y = 0.2f;
-                } else {
-                    bird->type = BIRD_TYPE_WHITE;
-                    bird->alive.health = 1;
-                    bird->alive.move_speed = randf(0.2f, 0.8f);
-                    bird->alive.collision_bounds.x = 0.1f;
-                    bird->alive.collision_bounds.y = 0.1f;
-                }
-            } break;
-            case AREA_MEADOWS: {
-                if (bird_is_red(state)) {
-                    setup_red_bird(bird);
-                    break;
-                }
-                bird->type = BIRD_TYPE_YELLOW;
-                bird->alive.health = 1;
-                bird->alive.move_speed = randf(0.2f, 0.8f);
-                bird->alive.collision_bounds.x = 0.1f;
-                bird->alive.collision_bounds.y = 0.1f;
-            } break;
-            case AREA_MOUNTAINS: {
-                if (bird_is_red(state)) {
-                    setup_red_bird(bird);
-                    break;
-                }
-                bird->type = BIRD_TYPE_BROWN;
-                bird->alive.health = 1;
-                bird->alive.move_speed = randf(0.2f, 0.8f);
-                bird->alive.collision_bounds.x = 0.1f;
-                bird->alive.collision_bounds.y = 0.1f;
-            } break;
-            }
+            setup_bird_by_level(state, bird);
 
             state->birds_in_use++;
             state->level_current_data.spawned_birds++;
@@ -257,7 +268,7 @@ void birds_update(State *state) {
                 set_bird_available(state, bird);
             } else {
                 bird->anim_time += state->delta_time;
-                if (bird->anim_time > BIRD_ANIM_SPEED) {
+                if (bird->anim_time > GAME_ANIM_SPEED) {
                     bird->anim_time = 0.0f;
                     bird->alive.current_tex = (bird->alive.current_tex + 1) % BIRD_ANIM_TEX_AMOUNT;
                 }
@@ -411,6 +422,24 @@ bool bird_try_destroy(State *state, Bird *bird, Vector2 from) {
     }
 }
 
+bool bird_try_destroy_by_player(State *state, Bird *bird) {
+    switch (bird->type) {
+    default: break;
+    case BIRD_TYPE_UMBRELLA_ABOVE: {
+        if (state->player_state == PLAYER_STATE_DOWN) {
+            return false;
+        }
+    } break;
+    case BIRD_TYPE_UMBRELLA_UNDER: {
+        if (state->player_state == PLAYER_STATE_UP) {
+            return false;
+        }
+    } break;
+    }
+    return bird_try_destroy(state, bird, state->player_position);
+}
+
+
 void birds_give_alive_ones_to_portal(State *state) {
     Vector2 portal_position = portal_get_position(state);
     for (int i = 0; i < BIRD_CAPACITY; i++) {
@@ -445,6 +474,8 @@ void birds_render(State *state) {
             case BIRD_TYPE_WHITE: bird_tex = TEX_WHITE_BIRD_1 + bird->alive.current_tex; break;
             case BIRD_TYPE_GIANT: bird_tex = TEX_GIANT_BIRD_1 + bird->alive.current_tex; break;
             case BIRD_TYPE_YELLOW: bird_tex = TEX_YELLOW_BIRD_1 + bird->alive.current_tex; break;
+            case BIRD_TYPE_UMBRELLA_ABOVE: bird_tex = TEX_UMBRELLA_BIRD_ABOVE_1 + bird->alive.current_tex; break;
+            case BIRD_TYPE_UMBRELLA_UNDER: bird_tex = TEX_UMBRELLA_BIRD_UNDER_1 + bird->alive.current_tex; break;
             case BIRD_TYPE_BROWN: bird_tex = TEX_BROWN_BIRD_1 + bird->alive.current_tex; break;
             case BIRD_TYPE_RED: bird_tex = TEX_RED_BIRD_1 + bird->alive.current_tex; break;
             }

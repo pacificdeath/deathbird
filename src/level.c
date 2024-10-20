@@ -167,7 +167,9 @@ void level_setup_next(State *state) {
     int extra_birds = next_level_idx * LEVEL_BIRD_AMOUNT_MULTIPLIER;
     int extra_birds_random = GetRandomValue(LEVEL_MIN_RANDOM_BIRD_AMOUNT, LEVEL_MAX_RANDOM_BIRD_AMOUNT);
     state->next_level_data.total_birds = LEVEL_BASE_BIRD_TOTAL + extra_birds + extra_birds_random;
-    state->next_level_data.required_score = state->next_level_data.total_birds * 2.0f;
+
+    int required_score_multiplier = 2 + ((next_level_idx - 1) / 3);
+    state->next_level_data.required_score = state->next_level_data.total_birds * required_score_multiplier;
 
     if (next_level_idx >= LEVELS_BEFORE_MIN_FREQUENCY) {
         state->next_level_data.bird_frequency = LEVEL_MIN_BIRD_FREQUENCY;

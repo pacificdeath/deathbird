@@ -85,7 +85,13 @@ void atlas_init(State *state) {
 
     data.start_texture = TEX_WHITE_BIRD_1;
     data.texture_size = 32;
-    data.consecutive_textures = 28;
+    data.consecutive_textures = 23;
+    data.reset_x_and_offset_y = 32;
+    add_texture(state, &data);
+
+    data.start_texture = TEX_BROWN_BIRD_1;
+    data.texture_size = 32;
+    data.consecutive_textures = 14;
     data.reset_x_and_offset_y = 32;
     add_texture(state, &data);
 

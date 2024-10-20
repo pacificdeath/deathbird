@@ -9,17 +9,18 @@
 #define GAME_GROUND_Y -0.87f
 #define GAME_CEILING_Y 0.97f
 #define GAME_OUT_OF_BOUNDS_COLOR BLACK
+#define GAME_ANIM_SPEED 0.1f
 
 #define ATLAS_PADDING 1
 
 #define AREA_TEXTURE_SIZE 128.0f
 
-#define LEVEL_BASE_BIRD_TOTAL 40
+#define LEVEL_BASE_BIRD_TOTAL 1000
 #define LEVEL_MIN_RANDOM_BIRD_AMOUNT 0
 #define LEVEL_MAX_RANDOM_BIRD_AMOUNT 10
 #define LEVEL_BIRD_AMOUNT_MULTIPLIER 5
 #define LEVEL_MIN_BIRD_FREQUENCY 0.1f
-#define LEVEL_MAX_BIRD_FREQUENCY 0.3f
+#define LEVEL_MAX_BIRD_FREQUENCY 0.2f
 #define LEVELS_BEFORE_MIN_FREQUENCY 31
 #define LEVEL_MIN_RANDOM_BIRD_FREQUENCY 0.0f
 #define LEVEL_MAX_RANDOM_BIRD_FREQUENCY 0.1f
@@ -50,7 +51,6 @@
 #define BIRD_DEATH_GORE_PARTS 4
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
 #define BIRD_GRAVITY 4.0f
-#define BIRD_ANIM_SPEED 0.1f
 #define BIRD_ANIM_TEX_AMOUNT 4
 #define BIRD_GORE_TEX_AMOUNT 2
 #define BIRD_BLOOD_TEX_AMOUNT 4
@@ -71,6 +71,7 @@
 #define MENU_FONT_SIZE 250
 #define MENU_BG_COLOR ((Color) { 0, 0, 192, 255 })
 #define MENU_CURSOR_BG_COLOR ((Color) { 255, 0, 0, 255 })
+#define MENU_HIGHLIGHT_COLOR ((Color) { 0, 255, 0, 255 })
 #define MENU_FG_COLOR ((Color) { 255, 255, 255, 255 })
 #define MENU_TEXT_COLOR ((Color) { 255, 255, 0, 255 })
 #define MENU_ACTIVE_LEVEL_COLOR ((Color) { 0, 255, 0, 255 })
@@ -141,6 +142,15 @@ typedef enum Tex {
     TEX_YELLOW_BIRD_HEAD,
     TEX_YELLOW_BIRD_BODY,
     TEX_YELLOW_BIRD_WING,
+    TEX_UMBRELLA_BIRD_ABOVE_1,
+    TEX_UMBRELLA_BIRD_ABOVE_2,
+    TEX_UMBRELLA_BIRD_ABOVE_3,
+    TEX_UMBRELLA_BIRD_ABOVE_4,
+    TEX_UMBRELLA_BIRD_UNDER_1,
+    TEX_UMBRELLA_BIRD_UNDER_2,
+    TEX_UMBRELLA_BIRD_UNDER_3,
+    TEX_UMBRELLA_BIRD_UNDER_4,
+    TEX_UMBRELLA,
     TEX_BROWN_BIRD_1,
     TEX_BROWN_BIRD_2,
     TEX_BROWN_BIRD_3,
@@ -185,8 +195,8 @@ typedef enum Area {
 } Area;
 
 typedef enum Shop_Item {
-    SHOP_ITEM_PORTAL_YELLOW,
-    SHOP_ITEM_PORTAL_WHITE,
+    SHOP_ITEM_YELLOW_PORTAL,
+    SHOP_ITEM_WHITE_PORTAL,
     SHOP_ITEM_TOTAL
 } Shop_Item;
 
@@ -243,6 +253,8 @@ typedef enum Bird_Type {
     BIRD_TYPE_WHITE,
     BIRD_TYPE_GIANT,
     BIRD_TYPE_YELLOW,
+    BIRD_TYPE_UMBRELLA_ABOVE,
+    BIRD_TYPE_UMBRELLA_UNDER,
     BIRD_TYPE_BROWN,
     BIRD_TYPE_RED,
     BIRD_TYPES_TOTAL,
@@ -332,14 +344,25 @@ typedef struct State {
     } level_current_data, next_level_data;
 
     enum {
-        MENU_STATE_DEFAULT = 0,
-        MENU_STATE_INFO_BOX,
+        MENU_STATE_NOTIFICATION = 0,
+        MENU_STATE_DEFAULT,
+        MENU_STATE_LEVEL_SELECT,
         MENU_STATE_SHOP,
         MENU_STATE_SHOP_BUY_NO,
         MENU_STATE_SHOP_BUY_YES,
+        MENU_STATE_SHOP_TOO_EXPENSIVE,
         MENU_STATE_GAME_OVER,
     } menu_state;
     Font menu_font;
+    enum {
+        MENU_NOTIFICATION_NONE,
+        MENU_NOTIFICATION_RED_BIRD_DESTROYED,
+        MENU_NOTIFICATION_TOTAL
+    } menu_notifications;
+    Tex menu_anim[4];
+    uint16 menu_anim_frame;
+    float menu_anim_timer;
+    uint available_options;
     uint8 menu_option_idx;
     uint8 menu_option_count;
     uint8 menu_option_offset;
@@ -347,6 +370,8 @@ typedef struct State {
     uint8 menu_suboption_offset;
     uint8 menu_suboption_count;
     Shop_Item_State shop_items[SHOP_ITEM_TOTAL];
+
+    uint uranium;
 
     enum {
         PLAYER_STATE_NONE = 0,
@@ -360,6 +385,7 @@ typedef struct State {
     Vector2 player_position;
     float player_rotation;
     uint16 player_current_input;
+    int16 player_may_not_interact_with_this_bird_idx;
 
     Bird birds[BIRD_CAPACITY];
     Shader bird_damage_shader;
@@ -414,6 +440,6 @@ Vector2 portal_get_position(State *state);
 float portal_distance_to_center_ratio(State *state, Vector2 position);
 bool portal_inhale_object(float *obj_position, float obj_step, float portal_position);
 
-bool bird_try_destroy(State *state, Bird *bird, Vector2 from);
+bool bird_try_destroy_by_player(State *state, Bird *bird);
 
 #endif
