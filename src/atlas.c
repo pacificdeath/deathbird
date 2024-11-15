@@ -67,19 +67,39 @@ void atlas_init(State *state) {
 
     data.start_texture = TEX_AREA_NIGHT_SKY;
     data.texture_size = 128;
-    data.consecutive_textures = 9;
+    data.consecutive_textures = 8;
     data.reset_x_and_offset_y = 128;
     add_texture(state, &data);
 
     data.start_texture = TEX_AREA_WINTER_SKY;
     data.texture_size = 128;
-    data.consecutive_textures = 6;
+    data.consecutive_textures = 8;
+    data.reset_x_and_offset_y = 128;
+    add_texture(state, &data);
+
+    data.start_texture = TEX_AREA_BIG_TREES_3;
+    data.texture_size = 128;
+    data.consecutive_textures = 1;
+    data.reset_x_and_offset_y = 128;
+    add_texture(state, &data);
+
+    // more 128x128 textures to come
+    data.start_texture = 0;
+    data.texture_size = 128;
+    data.consecutive_textures = 0;
     data.reset_x_and_offset_y = 128;
     add_texture(state, &data);
 
     data.start_texture = TEX_GIANT_BIRD_1;
     data.texture_size = 64;
     data.consecutive_textures = 7;
+    data.reset_x_and_offset_y = 64;
+    add_texture(state, &data);
+
+    // more 64x64 textures to come
+    data.start_texture = 0;
+    data.texture_size = 64;
+    data.consecutive_textures = 0;
     data.reset_x_and_offset_y = 64;
     add_texture(state, &data);
 
@@ -91,7 +111,7 @@ void atlas_init(State *state) {
 
     data.start_texture = TEX_BROWN_BIRD_1;
     data.texture_size = 32;
-    data.consecutive_textures = 14;
+    data.consecutive_textures = 21;
     data.reset_x_and_offset_y = 32;
     add_texture(state, &data);
 
@@ -163,7 +183,7 @@ void atlas_debug(State *state) {
     BeginDrawing();
     Vector2 text_position = {state->game_left, state->game_top};
     ClearBackground(BLACK);
-    DrawTextEx(state->menu_font, TextFormat("Texture: %i", tex), text_position, 20 * state->scale_multiplier, 0.0f, WHITE);
+    DrawTextEx(state->menu.font, TextFormat("Texture: %i", tex), text_position, 20 * state->scale_multiplier, 0.0f, WHITE);
     atlas_draw(state, tex, (Vector2){0}, 0.0f, 1.0f, WHITE);
     EndDrawing();
 }

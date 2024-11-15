@@ -1,6 +1,10 @@
 #include "raylib.h"
 #include "main.h"
 
+#define FADER_MAX 255
+#define FADER_MIN 0
+#define FADER_SPEED 500.0f
+
 void fade_in(State *state) {
     state->fader_state = FADER_STATE_IN;
     state->fader_level -= FADER_SPEED * state->delta_time;

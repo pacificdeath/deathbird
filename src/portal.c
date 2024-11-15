@@ -34,7 +34,10 @@ Portal_Bits portal_area_color(Area area) {
         return PORTAL_BIT_YELLOW;
     } break;
     case AREA_MOUNTAINS: {
-        return PORTAL_BIT_WHITE;
+        return (PORTAL_BIT_GREEN | PORTAL_BIT_BLUE);
+    } break;
+    case AREA_DEEP_FOREST: {
+        return PORTAL_BIT_RED;
     } break;
     default: {
         return PORTAL_BIT_NONE;
@@ -88,7 +91,7 @@ bool portal_disappear(State *state) {
 }
 
 bool portal_inhale(State *state) {
-    if (state->player_state == PLAYER_STATE_INHALED_BY_PORTAL) {
+    if (state->player.state == PLAYER_STATE_INHALED_BY_PORTAL) {
         return false;
     }
     for (int i = 0; i < BIRD_CAPACITY; i++) {
@@ -139,9 +142,9 @@ bool portal_exhale(State *state) {
             default: break;
             }
         }
-        switch (state->player_state) {
+        switch (state->player.state) {
         case PLAYER_STATE_INSIDE_PORTAL: {
-            state->player_state = PLAYER_STATE_EXHALED_BY_PORTAL;
+            state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
             return false;
         } break;
         case PLAYER_STATE_EXHALED_BY_PORTAL: {

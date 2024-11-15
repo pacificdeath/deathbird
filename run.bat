@@ -7,9 +7,6 @@ set PROGRAM=""
 set DEBUG=""
 set VERBOSE=""
 set GDB=0
-set TEST_THREAD=""
-set LIST_TOKENS=""
-set LIST_FREQUENCIES=""
 
 for %%x in (%*) do (
     if "%%x"=="-help" (
