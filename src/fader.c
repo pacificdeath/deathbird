@@ -1,4 +1,4 @@
-#include "raylib.h"
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "main.h"
 
 #define FADER_MAX 255

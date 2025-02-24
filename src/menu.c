@@ -1,13 +1,22 @@
-#include "raylib.h"
+#include <string.h>
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "main.h"
 
 typedef enum Option {
     OPTION_RESULTS,
-    OPTION_CONTINUE,
+    OPTION_PLAY,
     OPTION_SHOP,
     OPTION_MULTIPLIERS,
     OPTION_TOTAL
 } Option;
+
+typedef enum Suboption {
+    SUBOPTION_NONE = -1,
+    SUBOPTION_LEVEL_FOREST = 0,
+    SUBOPTION_LEVEL_MEADOWS = 1,
+    SUBOPTION_LEVEL_MOUNTAINS = 2,
+    SUBOPTION_LEVEL_INDUSTRIAL = 3,
+} Suboption;
 
 static void draw_default_menu_background(State *state) {
     Menu *menu = &state->menu;
@@ -120,23 +129,6 @@ static void draw_cursor(State *state, float x_pivot, float line_idx) {
         .y = menu->top + menu->header_size + (menu->line_size * line_idx)
     };
     DrawTextPro(menu->font, cursor, position, origin, 0.0f, menu->font_size, 0.0f, MENU_TEXT_COLOR);
-}
-
-static void draw_suboption_highlight(State *state, float line_idx) {
-    Menu *menu = &state->menu;
-
-    float left_padding = (menu->x_fract * 1.7);
-    float vertical_padding = 0.3f * menu->y_fract;
-    Rectangle rec = {
-        .x = menu->center_x + left_padding,
-        .y = menu->top
-            + menu->header_size
-            + (menu->line_size * line_idx)
-            + vertical_padding,
-        .width = (menu->width / 2) - left_padding - (menu->x_fract * 2),
-        .height = menu->line_size - (vertical_padding * 2)
-    };
-    DrawRectangleLinesEx(rec, menu->decor_line_size, MENU_HIGHLIGHT_COLOR);
 }
 
 static void draw_option_cursor(State *state) {
@@ -302,19 +294,15 @@ static void draw_option_scroll_bar(State *state, int item_count, int item_area_o
     draw_scroll_bar(state, item_count, item_area_offset, x);
 }
 
-static void draw_suboption_scroll_bar(State *state, int item_count, int item_area_offset) {
-    Menu *menu = &state->menu;
-
-    float x = menu->right - (menu->x_fract);
-    draw_scroll_bar(state, item_count, item_area_offset, x);
-}
-
 static void get_option_text(char *buffer, Option option_type) {
     switch (option_type) {
+    default: {
+        sprintf(buffer, "Horrible code");
+    } break;
     case OPTION_RESULTS: {
         sprintf(buffer, "Level results");
     } break;
-    case OPTION_CONTINUE: {
+    case OPTION_PLAY: {
         sprintf(buffer, "Just play the game");
     } break;
     case OPTION_SHOP: {
@@ -367,10 +355,6 @@ static int get_shop_item_cost(State *state, Shop_Item item) {
     }
 }
 
-static bool is_item_owned(State *state, Shop_Item item) {
-    return state->menu.shop_items[item] == SHOP_ITEM_STATE_OWNED;
-}
-
 static int get_active_option(State* state) {
     int idx = -1;
     for (int i = 0; i < OPTION_TOTAL; i++) {
@@ -395,6 +379,7 @@ static void view_option_data(State *state, Option option_type) {
     Menu *menu = &state->menu;
 
     switch (option_type) {
+    default: break;
     case OPTION_RESULTS: {
         int info_line_idx = 0;
         char buffer[32];
@@ -412,7 +397,7 @@ static void view_option_data(State *state, Option option_type) {
         draw_suboption_text(state, buffer, info_line_idx);
         info_line_idx++;
         int red_birds_destroyed = 0;
-        for (int i = AREA_FOREST; i <= AREA_DEEP_FOREST; i++) {
+        for (int i = AREA_FOREST; i <= AREA_INDUSTRIAL; i++) {
             int flag = 1 << i;
             if (has_flag(state->red_birds_destroyed_bits, flag)) {
                 red_birds_destroyed++;
@@ -421,102 +406,23 @@ static void view_option_data(State *state, Option option_type) {
         sprintf(buffer, "Red birds: %i/3", red_birds_destroyed);
         draw_suboption_text(state, buffer, info_line_idx);
     } break;
-    case OPTION_CONTINUE: {
-        float map_size = menu->width / 2 - (menu->x_fract * 4);
-        float map_line_size = 2.0f * state->scale_multiplier;
-        float map_cell_size = map_size / 3;
-        float tex_cell_size = GAME_WIDTH_RATIO / (menu->width / (map_cell_size - (map_line_size * 2)));
-        float map_left = menu->center_x + (menu->x_fract * 2);
-        float map_top = menu->top + menu->header_size + (menu->x_fract * 2);
-        for (int map_row = 0; map_row < 3; map_row++) {
-            for (int map_col = 0; map_col < 3; map_col++) {
-                int cell_idx = (map_row * 3) + map_col;
-                bool is_map_location = cell_idx == (state->next_level_data.area - 1);
-                Tex tex;
-                int tex_amount = 0;
-                uint16 discovered_level_bit = (1 << cell_idx);
-                if (has_flag(state->areas_discovered_bits, discovered_level_bit)) {
-                    switch (cell_idx) {
-                    case 0: {
-                        tex = TEX_AREA_NIGHT_SKY;
-                        tex_amount = 4;
-                    } break;
-                    case 1: {
-                        tex = TEX_AREA_DAY_SKY;
-                        tex_amount = 4;
-                    } break;
-                    case 2: {
-                        tex = TEX_AREA_WINTER_SKY;
-                        tex_amount = 5;
-                    } break;
-                    }
-                }
-                Rectangle outer_rec = {
-                    .x = map_left + (map_cell_size * map_col),
-                    .y = map_top + (map_cell_size * map_row),
-                    .width = map_cell_size,
-                    .height = map_cell_size
-                };
-                if (is_map_location) {
-                    DrawRectangleLinesEx(outer_rec, map_line_size, MENU_ACTIVE_LEVEL_COLOR);
-                    float cell_2 = map_cell_size / 2;
-                    float cell_8 = map_cell_size / 8;
-                    {
-                        // left arrow
-                        Vector2 v1 = { map_left - cell_8, map_top + cell_2 + (map_row * map_cell_size) };
-                        Vector2 v2 = { v1.x - cell_8, v1.y - cell_8 };
-                        Vector2 v3 = { v2.x, v1.y + cell_8 };
-                        DrawTriangle(v1, v2, v3, MENU_ACTIVE_LEVEL_COLOR);
-                    }
-                    {
-                        // top arrow
-                        Vector2 v1 = { map_left + cell_2 + (map_col * map_cell_size), map_top - cell_8 };
-                        Vector2 v2 = { v1.x + cell_8, v1.y - cell_8 };
-                        Vector2 v3 = { v1.x - cell_8, v2.y };
-                        DrawTriangle(v1, v2, v3, MENU_ACTIVE_LEVEL_COLOR);
-                    }
-                }
-                Vector2 tex_position = {
-                    .x = map_left + map_line_size + (map_cell_size * map_col),
-                    .y = map_top + map_line_size + (map_cell_size * map_row),
-                };
-                if (tex_amount > 0) {
-                    Vector2 origin = {0};
-                    for (int i = 0; i < tex_amount; i++) {
-                        atlas_draw_raw(state, tex + i, tex_position, 0, tex_cell_size, origin, OPAQUE);
-                    }
-                } else {
-                    Rectangle inner_rec = {
-                        .x = map_left + map_line_size + (map_cell_size * map_col),
-                        .y = map_top + map_line_size + (map_cell_size * map_row),
-                        .width = map_cell_size - (map_line_size * 2),
-                        .height = map_cell_size - (map_line_size * 2)
-                    };
-                    DrawRectangleRec(inner_rec, BLACK);
-                    char *unknown_text = "???";
-                    Vector2 unknwon_text_menu = MeasureTextEx(
-                        menu->font,
-                        unknown_text,
-                        menu->font_size,
-                        0
-                    );
-                    Vector2 unknown_text_position = {
-                        .x = outer_rec.x + (map_cell_size / 2) - unknwon_text_menu.x / 2,
-                        .y = outer_rec.y + (map_cell_size / 2) - unknwon_text_menu.y / 2
-                    };
-                    DrawTextPro(
-                        menu->font,
-                        unknown_text,
-                        unknown_text_position,
-                        (Vector2){0},
-                        0.0f,
-                        menu->font_size,
-                        0.0f,
-                        WHITE
-                    );
-                }
-            }
+    case OPTION_PLAY: {
+        if (menu->state == MENU_STATE_LEVEL_SELECT) {
+            draw_suboption_cursor(state);
         }
+        int info_line_idx = 0;
+        char buffer[32];
+        sprintf(buffer, "Forest");
+        draw_suboption_text(state, buffer, info_line_idx);
+        info_line_idx++;
+        sprintf(buffer, "Meadows");
+        draw_suboption_text(state, buffer, info_line_idx);
+        info_line_idx++;
+        sprintf(buffer, "The Snow Level");
+        draw_suboption_text(state, buffer, info_line_idx);
+        info_line_idx++;
+        sprintf(buffer, "Red");
+        draw_suboption_text(state, buffer, info_line_idx);
     } break;
     case OPTION_SHOP: {
         if (menu->state == MENU_STATE_SHOP) {
@@ -604,7 +510,7 @@ void menu_init(State *state) {
     menu->font = LoadFont(MENU_FONT);
     menu->option_count = 0;
     enable_option(state, OPTION_RESULTS);
-    enable_option(state, OPTION_CONTINUE);
+    enable_option(state, OPTION_PLAY);
     enable_option(state, OPTION_SHOP);
     enable_option(state, OPTION_MULTIPLIERS);
     menu->boost_of_haste_level = 1;
@@ -623,23 +529,16 @@ void menu_level_setup(State *state) {
 
     menu->option_idx = 0;
     menu->option_offset = 0;
-    state->areas_discovered_bits |= (1 << (state->next_level_data.area - 1));
+    state->areas_discovered_bits |= (1 << (state->area - 1));
     menu->shop_items[SHOP_ITEM_BOOST_OF_HASTE] = SHOP_ITEM_STATE_AVAILABLE;
     menu->shop_items[SHOP_ITEM_BIRD_FOOD] = SHOP_ITEM_STATE_AVAILABLE;
     menu->anim_timer = 0.0f;
     menu->anim_frame = 0;
 
-    menu->uranium += state->birds_destroyed[BIRD_TYPE_WHITE] * 1;
-    menu->uranium += state->birds_destroyed[BIRD_TYPE_YELLOW] * 1;
+    menu->uranium += state->birds_destroyed[BIRD_TYPE_REGULAR] * 1;
     menu->uranium += state->birds_destroyed[BIRD_TYPE_UMBRELLA_ABOVE] * 2;
     menu->uranium += state->birds_destroyed[BIRD_TYPE_UMBRELLA_UNDER] * 2;
-    menu->uranium += state->birds_destroyed[BIRD_TYPE_BROWN] * 1;
     menu->uranium += state->birds_destroyed[BIRD_TYPE_GIANT] * 5;
-    menu->uranium += state->birds_destroyed[BIRD_TYPE_RED] * 10;
-
-    if (state->birds_destroyed[BIRD_TYPE_RED] > 0) {
-        menu_add_notification(state, MENU_NOTIFICATION_RED_BIRD_DESTROYED);
-    }
 }
 
 void menu_game_over_setup(State *state) {
@@ -654,18 +553,8 @@ void menu_game_over_setup(State *state) {
     menu->state = MENU_STATE_GAME_OVER;
 }
 
-void menu_update(State *state) {
+Area menu_update(State *state) {
     Menu *menu = &state->menu;
-
-    #if DEBUG
-    int number_key = KEY_ONE;
-    for (int i = 0; i < 3; i++) {
-        if (IsKeyPressed(number_key + i)) {
-            state->next_level_data.area = AREA_FOREST + i;
-        }
-    }
-    #endif
-
 
     bool select = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
 
@@ -673,7 +562,7 @@ void menu_update(State *state) {
         if (select) {
             menu->state = MENU_STATE_DEFAULT;
         } else {
-            return;
+            return SUBOPTION_NONE;
         }
     }
 
@@ -696,8 +585,8 @@ void menu_update(State *state) {
         if (select) {
             switch (active_option) {
             default: break;
-            case OPTION_CONTINUE: {
-                state->global_state = GLOBAL_STATE_GAME;
+            case OPTION_PLAY: {
+                menu->state = MENU_STATE_LEVEL_SELECT;
             } break;
             case OPTION_SHOP: {
                 if (count_shop_items(state) > 0) {
@@ -720,8 +609,7 @@ void menu_update(State *state) {
         cursor_movement(&menu->suboption_idx, &menu->suboption_offset, menu->suboption_count);
         if (left || IsKeyPressed(KEY_BACKSPACE)) {
             menu->state = MENU_STATE_DEFAULT;
-        }
-        if (select) {
+        } else if (select) {
             Shop_Item item = get_active_shop_item(state);
             int cost = get_shop_item_cost(state, item);
             if (cost > menu->uranium) {
@@ -745,16 +633,14 @@ void menu_update(State *state) {
                     menu->suboption_idx--;
                 }
             }
-        }
-        if (right) {
+        } else if (right) {
             menu->state = MENU_STATE_SHOP_BUY_NO;
         }
     } break;
     case MENU_STATE_SHOP_BUY_NO: {
         if (select) {
             menu->state = MENU_STATE_SHOP;
-        }
-        if (left) {
+        } else if (left) {
             menu->state = MENU_STATE_SHOP_BUY_YES;
         }
     } break;
@@ -763,7 +649,21 @@ void menu_update(State *state) {
             menu->state = MENU_STATE_SHOP;
         }
     } break;
+    case MENU_STATE_LEVEL_SELECT: {
+        cursor_movement(&menu->suboption_idx, &menu->suboption_offset, 4);
+        if (left || IsKeyPressed(KEY_BACKSPACE)) {
+            menu->state = MENU_STATE_DEFAULT;
+        } else if (select) {
+            switch (menu->suboption_idx) {
+            case SUBOPTION_LEVEL_FOREST:        return AREA_FOREST;
+            case SUBOPTION_LEVEL_MEADOWS:       return AREA_MEADOWS;
+            case SUBOPTION_LEVEL_MOUNTAINS:     return AREA_MOUNTAINS;
+            case SUBOPTION_LEVEL_INDUSTRIAL:    return AREA_INDUSTRIAL;
+            }
+        }
+    } break;
     }
+    return SUBOPTION_NONE;
 }
 
 void menu_render(State *state) {
@@ -778,7 +678,7 @@ void menu_render(State *state) {
         case 1 << MENU_NOTIFICATION_RED_BIRD_DESTROYED: {
             int anim_frames = 4;
             for (int i = 0; i < anim_frames; i++) {
-                menu->anim[i] = TEX_RED_BIRD_1 + i;
+                menu->anim[i] = TEX_BIRD_1 + i;
             }
             draw_info_box(state, "A red bird was destroyed", anim_frames);
         } break;
@@ -808,6 +708,7 @@ void menu_render(State *state) {
         Shop_Item item = get_active_shop_item(state);
         char item_name[32];
         switch (item) {
+        default: break;
         case SHOP_ITEM_BOOST_OF_HASTE: TextCopy(item_name, "Boost of Haste"); break;
         case SHOP_ITEM_BIRD_FOOD: TextCopy(item_name, "Bird Food"); break;
         }
@@ -826,6 +727,10 @@ void menu_render(State *state) {
             .y = menu->top - (text_menu.y / 2)
         };
         DrawTextPro(menu->font, text, position, origin, 0.0f, menu->font_size, 0.0f, WHITE);
+    } break;
+    case MENU_STATE_LEVEL_SELECT: {
+        draw_default_menu_background(state);
+        view_option_data(state, OPTION_PLAY);
     } break;
     }
 }

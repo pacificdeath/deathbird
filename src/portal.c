@@ -1,4 +1,4 @@
-#include "raylib.h"
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "rlgl.h"
 #include "main.h"
 
@@ -36,7 +36,7 @@ Portal_Bits portal_area_color(Area area) {
     case AREA_MOUNTAINS: {
         return (PORTAL_BIT_GREEN | PORTAL_BIT_BLUE);
     } break;
-    case AREA_DEEP_FOREST: {
+    case AREA_INDUSTRIAL: {
         return PORTAL_BIT_RED;
     } break;
     default: {

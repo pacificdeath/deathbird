@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <math.h>
-#include "raylib.h"
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "main.h"
+#include "text_in_blackness.c"
 #include "atlas.c"
 #include "level.c"
 #include "player.c"
@@ -133,6 +134,16 @@ int catch_window_resize(State *state) {
     return 0;
 }
 
+void travel_to_area(State *state, Area area) {
+    state->area = area;
+    state->birds_requested = 0;
+    Portal_Bits portal_color_bit = portal_area_color(area);
+    portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
+    birds_give_alive_ones_to_portal(state);
+    menu_level_setup(state);
+    state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_APPEAR;
+}
+
 int main(void) {
     State *state = (State *)calloc(1, sizeof(State));
     {
@@ -141,7 +152,7 @@ int main(void) {
         update_state_dimensions_window(state, window_min_width, window_min_height);
 
         SetTraceLogLevel(
-            #if VERBOSE
+            #if DEBUG
             LOG_ALL
             #else
             LOG_WARNING
@@ -162,12 +173,13 @@ int main(void) {
         state->sounds_death_splats[5] = LoadSound("./sounds/splat6.wav");
         state->sounds_death_splats[6] = LoadSound("./sounds/splat7.wav");
         state->sounds_death_splats[7] = LoadSound("./sounds/splat8.wav");
+        state->sound_explosion = LoadSound("./sounds/explosion.wav");
 
         atlas_init(state);
-        level_setup_first(state);
-        level_go_to_next(state);
+        state->area = AREA_INDUSTRIAL;
+        level_load_0(state);
         portal_init(state);
-        player_init(state);
+        player_init(&state->player);
         player_level_setup(state);
         birds_init(state);
         menu_init(state);
@@ -183,7 +195,17 @@ int main(void) {
                 atlas_debug_active = !atlas_debug_active;
             }
             if (atlas_debug_active) {
-                atlas_debug(state);
+                static int shader_idx = 0;
+                if (IsKeyPressed(KEY_S)) {
+                    shader_idx++;
+                    if (shader_idx > AREA_INDUSTRIAL) {
+                        shader_idx = 0;
+                    }
+                }
+                if (shader_idx >= AREA_FOREST) {
+                    birds_prepare_shader(state, shader_idx);
+                }
+                atlas_debug(state, shader_idx >= AREA_FOREST);
                 continue;
             }
         #endif
@@ -209,9 +231,12 @@ int main(void) {
 
         switch (state->global_state) {
         case GLOBAL_STATE_MENU: {
-            menu_update(state);
             level_update(state);
             birds_update(state);
+            int area = menu_update(state);
+            if (area >= 0) {
+                travel_to_area(state, area);
+            }
         } break;
         case GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR: {
             level_update(state);
@@ -231,6 +256,7 @@ int main(void) {
             level_update(state);
             player_update(state);
             if (portal_disappear(state)) {
+                birds_prepare_shader(state, state->area);
                 state->global_state = GLOBAL_STATE_GAME;
             }
         } break;
@@ -240,18 +266,21 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
-            bool level_success = false;
+            bool level_success = state->portal_fuel >= state->current_level.required_fuel;
             bool level_fail = false;
             if (level_success || level_fail) {
+                state->portal_fuel = 0;
                 if (level_success) {
-                    level_setup_next(state);
-                    Portal_Bits portal_color_bit = portal_area_color(state->next_level_data.area);
-                    portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
-                    birds_give_alive_ones_to_portal(state);
-                    menu_level_setup(state);
+                    switch (state->area) {
+                    case AREA_FOREST: travel_to_area(state, AREA_MEADOWS); break;
+                    case AREA_MEADOWS: travel_to_area(state, AREA_MOUNTAINS); break;
+                    case AREA_MOUNTAINS: travel_to_area(state, AREA_INDUSTRIAL); break;
+                    case AREA_INDUSTRIAL: travel_to_area(state, AREA_FOREST); break;
+                    default: travel_to_area(state, AREA_FOREST); break;
+                    }
                 } else {
-                    level_setup_first(state);
                     portal_setup(state, PORTAL_BIT_INHALE | PORTAL_BIT_BLACK);
+                    birds_give_alive_ones_to_portal(state);
                     menu_game_over_setup(state);
                 }
                 state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
@@ -281,18 +310,34 @@ int main(void) {
             }
         } break;
         case GLOBAL_STATE_FADE_OUT: {
-            level_update(state);
-            player_update(state);
             if (state->fader_state == FADER_STATE_OUT_COMPLETE) {
-                state->global_state = GLOBAL_STATE_FADE_IN;
+                if (false) {
+                    state->global_state = GLOBAL_STATE_GAME_OVER;
+                } else {
+                    player_level_setup(state);
+                    switch (state->area) {
+                    case AREA_FOREST:       level_load_next(state); break;
+                    case AREA_MEADOWS:      level_load_next(state); break;
+                    case AREA_MOUNTAINS:    level_load_next(state); break;
+                    default:                level_load_next(state); break;
+                    }
+                    state->global_state = GLOBAL_STATE_FADE_IN;
+                }
             } else {
+                level_update(state);
                 fade_out(state);
             }
         } break;
         case GLOBAL_STATE_FADE_IN: {
             if (state->fader_state == FADER_STATE_IN_COMPLETE) {
-                state->global_state = GLOBAL_STATE_MENU;
+                state->global_state = GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR;
             } else {
+                level_update(state);
+                fade_in(state);
+            }
+        } break;
+        case GLOBAL_STATE_GAME_OVER: {
+            if (state->fader_state != FADER_STATE_IN_COMPLETE) {
                 fade_in(state);
             }
         } break;
@@ -331,6 +376,10 @@ int main(void) {
             level_render(state);
             birds_render(state);
             player_render(state);
+        } break;
+        case GLOBAL_STATE_GAME_OVER: {
+            game_over_text(state);
+            fader_render(state);
         } break;
         }
 

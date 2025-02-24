@@ -2,10 +2,8 @@
 setlocal enabledelayedexpansion
 
 set D="-g -DDEBUG"
-set V="-DVERBOSE"
 set PROGRAM=""
 set DEBUG=""
-set VERBOSE=""
 set GDB=0
 
 for %%x in (%*) do (
@@ -18,20 +16,15 @@ for %%x in (%*) do (
     ) else if "%%x"=="d" (
         set DEBUG=%D%
         echo DEBUG is enabled
-    ) else if "%%x"=="v" (
-        set VERBOSE=%V%
-        echo VERBOSE is enabled
     ) else (
         set PROGRAM="%%x"
     )
 )
 
 set DEBUG=%DEBUG:"=%
-set VERBOSE=%VERBOSE:"=%
 
 gcc ^
     !DEBUG! ^
-    !VERBOSE! ^
     -o ./build/deathbird.exe ^
     ./src/main.c ^
     -O0 ^

@@ -1,8 +1,5 @@
-#include "raylib.h"
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "main.h"
-#if DEBUG
-#include <stdio.h>
-#endif
 
 typedef struct Atlas_Texture_Batch_Data {
     int x;
@@ -15,8 +12,9 @@ typedef struct Atlas_Texture_Batch_Data {
 
 static void add_texture(State *state, Atlas_Texture_Batch_Data *data) {
     #if DEBUG
-    printf(
-        "Deathbird Atlas: Tex (%3i -> %3i) Size %3i Offset (x %3i y %3i)\n",
+    TraceLog(
+        LOG_DEBUG,
+        "Deathbird Atlas: Tex (%3i -> %3i) Size %3i Offset (x %3i y %3i)",
         data->start_texture,
         data->start_texture + data->consecutive_textures,
         data->texture_size,
@@ -25,7 +23,9 @@ static void add_texture(State *state, Atlas_Texture_Batch_Data *data) {
     );
     #endif
     for (int i = 0; i < data->consecutive_textures; i++) {
-        state->atlas_textures[data->start_texture + i] = (Atlas_Texture) {
+        int idx = data->start_texture + i;
+        ASSERT(idx < TEX_TOTAL);
+        state->atlas_textures[idx] = (Atlas_Texture) {
             .x = data->x,
             .y = data->y,
             .size = data->texture_size
@@ -39,6 +39,7 @@ static void add_texture(State *state, Atlas_Texture_Batch_Data *data) {
 }
 
 static void atlas_source_rectangle(State *state, Rectangle *rec, Tex tex) {
+    ASSERT(tex < TEX_TOTAL);
     rec->x = state->atlas_textures[tex].x;
     rec->y = state->atlas_textures[tex].y;
     rec->width = state->atlas_textures[tex].size;
@@ -53,6 +54,7 @@ static void atlas_destination_rectangle(State *state, Rectangle *rec, Vector2 po
 }
 
 static float tex_render_scale(State *state, Tex tex, float multiplier) {
+    ASSERT(tex < TEX_TOTAL);
     float size = (float)(state->atlas_textures[tex].size);
     float result = size * state->scale_multiplier * multiplier;
     return result;
@@ -77,9 +79,9 @@ void atlas_init(State *state) {
     data.reset_x_and_offset_y = 128;
     add_texture(state, &data);
 
-    data.start_texture = TEX_AREA_BIG_TREES_3;
+    data.start_texture = TEX_AREA_INDUSTRIAL_FENCE;
     data.texture_size = 128;
-    data.consecutive_textures = 1;
+    data.consecutive_textures = 2;
     data.reset_x_and_offset_y = 128;
     add_texture(state, &data);
 
@@ -92,7 +94,7 @@ void atlas_init(State *state) {
 
     data.start_texture = TEX_GIANT_BIRD_1;
     data.texture_size = 64;
-    data.consecutive_textures = 7;
+    data.consecutive_textures = 13;
     data.reset_x_and_offset_y = 64;
     add_texture(state, &data);
 
@@ -103,16 +105,10 @@ void atlas_init(State *state) {
     data.reset_x_and_offset_y = 64;
     add_texture(state, &data);
 
-    data.start_texture = TEX_WHITE_BIRD_1;
+    data.start_texture = TEX_BIRD_1;
     data.texture_size = 32;
-    data.consecutive_textures = 23;
-    data.reset_x_and_offset_y = 32;
-    add_texture(state, &data);
-
-    data.start_texture = TEX_BROWN_BIRD_1;
-    data.texture_size = 32;
-    data.consecutive_textures = 21;
-    data.reset_x_and_offset_y = 32;
+    data.consecutive_textures = 16;
+    data.reset_x_and_offset_y = 64;
     add_texture(state, &data);
 
     data.start_texture = TEX_BIRD_BLOOD_1;
@@ -122,18 +118,6 @@ void atlas_init(State *state) {
     add_texture(state, &data);
 
     data.start_texture = TEX_BIRD_BLOOD_3;
-    data.texture_size = 16;
-    data.consecutive_textures = 5;
-    data.reset_x_and_offset_y = 0;
-    add_texture(state, &data);
-
-    data.start_texture = TEX_BIRD_BLOOD_GREEN_1;
-    data.texture_size = 32;
-    data.consecutive_textures = 2;
-    data.reset_x_and_offset_y = 0;
-    add_texture(state, &data);
-
-    data.start_texture = TEX_BIRD_BLOOD_GREEN_3;
     data.texture_size = 16;
     data.consecutive_textures = 5;
     data.reset_x_and_offset_y = 32;
@@ -169,7 +153,7 @@ void atlas_draw_raw(State *state, Tex tex, Vector2 position, float rotation, flo
 }
 
 #if DEBUG
-void atlas_debug(State *state) {
+void atlas_debug(State *state, bool bird_shader) {
     static Tex tex = 0;
     if (IsKeyPressed(KEY_RIGHT)) {
         tex = (tex + 1) % TEX_TOTAL;
@@ -181,10 +165,16 @@ void atlas_debug(State *state) {
         tex = ((tex + TEX_TOTAL) - 10) % TEX_TOTAL;
     }
     BeginDrawing();
+    if (bird_shader) {
+        BeginShaderMode(state->bird_shader);
+    }
     Vector2 text_position = {state->game_left, state->game_top};
     ClearBackground(BLACK);
     DrawTextEx(state->menu.font, TextFormat("Texture: %i", tex), text_position, 20 * state->scale_multiplier, 0.0f, WHITE);
     atlas_draw(state, tex, (Vector2){0}, 0.0f, 1.0f, WHITE);
+    if (bird_shader) {
+        EndShaderMode();
+    }
     EndDrawing();
 }
 #endif

@@ -1,4 +1,4 @@
-#include "raylib.h"
+#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "main.h"
 
 #define MAX_LEFT -0.9f
@@ -6,7 +6,7 @@
 #define ROTATION_SPEED_GROUND -450.0f
 #define ROTATION_SPEED_GROUND_MOVEMENT 1200.0f
 #define ROTATION_SPEED_PORTAL 1000.0f
-#define ROTATION_SPEED_AIR 2499.0f
+#define ROTATION_SPEED_AIR 2500.0f
 #define MULTIPLIER_DISPLAY_TIME 1.0f
 
 static void handle_input(State *state) {
@@ -65,17 +65,19 @@ static void handle_score(State *state) {
     state->level_score += (multiplier * multiplier);
     state->bird_multiplier_display = multiplier;
     state->bird_multiplier_timer = MULTIPLIER_DISPLAY_TIME;
+    state->portal_fuel = 0;
 }
 
-void player_init(State *state) {
-    state->player.vertical_speed = 1.5f;
-    state->player.horizontal_speed = 2.0f;
+void player_init(Player *p) {
+    p->vertical_speed = 1.5f;
+    p->horizontal_speed = 2.0f;
+    p->may_not_interact_with_this_bird_idx = -1;
 }
 
 void player_level_setup(State *state) {
     Player *player = &state->player;
 
-    player->state = PLAYER_STATE_GROUNDED;
+    player->state = PLAYER_STATE_INSIDE_PORTAL;
     player->spinner_position.x = 0.0f;
     player->spinner_position.y = 0.0f;
     state->level_score = 0;
@@ -89,6 +91,15 @@ void player_level_setup(State *state) {
     }
     player->last_turnaround_y = -1.0f;
     player->may_not_interact_with_this_bird_idx = -1;
+}
+
+static void player_turn_around(State *state) {
+    switch (state->player.state) {
+    case PLAYER_STATE_UP: state->player.state = PLAYER_STATE_DOWN; break;
+    case PLAYER_STATE_DOWN: state->player.state = PLAYER_STATE_UP; break;
+    default: break;
+    }
+    state->player.last_turnaround_y = state->player.spinner_position.y;
 }
 
 void player_update(State *state) {
@@ -111,6 +122,25 @@ void player_update(State *state) {
             player->state = PLAYER_STATE_GROUNDED;
         }
     } break;
+    case PLAYER_STATE_LOST_LIFE: {
+        handle_input(state);
+        player->spinner_position.y = GAME_GROUND_Y;
+        player->rotation += ROTATION_SPEED_GROUND * state->delta_time;
+        player->reset_flicker_timer += state->delta_time;
+        if (player->reset_flicker_timer > 0.1f) {
+            player->reset_flicker_count++;
+            player->reset_flicker_timer = 0.0f;
+            if (has_flag(player->flags, PLAYER_FLAG_HIDDEN)) {
+                player->flags &= ~PLAYER_FLAG_HIDDEN;
+            } else {
+                player->flags |= PLAYER_FLAG_HIDDEN;
+            }
+        }
+        if (player->reset_flicker_count == 6) {
+            player->reset_flicker_count = 0;
+            player->state = PLAYER_STATE_GROUNDED;
+        }
+    } break;
     case PLAYER_STATE_GROUNDED: {
         handle_input(state);
         player->spinner_position.y = GAME_GROUND_Y;
@@ -125,17 +155,18 @@ void player_update(State *state) {
         int dir = player->state == PLAYER_STATE_UP ? 1 : -1;
         player->spinner_position.y += dir * player->vertical_speed * state->delta_time;
         player->rotation += ROTATION_SPEED_AIR * state->delta_time;
-        if (player->spinner_position.y < GAME_GROUND_Y) {
+        const float oob = 0.5f;
+        const float oob_top = 1 + oob;
+        const float oob_bottom = - 1 - oob;
+        if (player->spinner_position.y < oob_bottom ||
+            player->spinner_position.y > oob_top
+        ) {
+            player->spinner_position.x = 0.0f;
             player->spinner_position.y = GAME_GROUND_Y;
             player->last_turnaround_y = -1.0f;
             player->may_not_interact_with_this_bird_idx = -1;
             handle_score(state);
-            player->state = PLAYER_STATE_GROUNDED;
-        } else if (player->spinner_position.y > GAME_CEILING_Y) {
-            player->last_turnaround_y = 1.0f;
-            player->may_not_interact_with_this_bird_idx = -1;
-            handle_score(state);
-            player->state = PLAYER_STATE_DOWN;
+            player->state = PLAYER_STATE_LOST_LIFE;
         }
 
         int bird_hit_idx;
@@ -198,22 +229,34 @@ void player_update(State *state) {
         }
 
         if (was_bird_hit) {
-            bool bird_was_destroyed = bird_try_destroy_by_player(state, &birds[bird_hit_idx]);
-            if (bird_was_destroyed) {
+            Bird_Hit hit = bird_try_destroy_by_player(state, &birds[bird_hit_idx]);
+
+            if (has_flag(hit, BIRD_HIT_DESTROYED)) {
                 player->may_not_interact_with_this_bird_idx = -1;
+                if (player->state == PLAYER_STATE_UP) {
+                    if (up_arrow_hold) {
+                        if (!has_flag(hit, BIRD_HIT_PASS_THROUGH_ALLOWED)) {
+                            player_turn_around(state);
+                        }
+                    } else {
+                        if (has_flag(hit, BIRD_HIT_BOUNCE_ALLOWED)) {
+                            player_turn_around(state);
+                        }
+                    }
+                } else {
+                    if (down_arrow_hold) {
+                        if (!has_flag(hit, BIRD_HIT_PASS_THROUGH_ALLOWED)) {
+                            player_turn_around(state);
+                        }
+                    } else {
+                        if (has_flag(hit, BIRD_HIT_BOUNCE_ALLOWED)) {
+                            player_turn_around(state);
+                        }
+                    }
+                }
             } else {
+                player_turn_around(state);
                 player->may_not_interact_with_this_bird_idx = bird_hit_idx;
-            }
-            if (player->state == PLAYER_STATE_UP) {
-                if (!up_arrow_hold || !bird_was_destroyed) {
-                    player->state = PLAYER_STATE_DOWN;
-                    player->last_turnaround_y = player->spinner_position.y;
-                }
-            } else {
-                if (!down_arrow_hold || !bird_was_destroyed) {
-                    player->state = PLAYER_STATE_UP;
-                    player->last_turnaround_y = player->spinner_position.y;
-                }
             }
         }
     } break;
@@ -261,6 +304,19 @@ void player_render(State *state) {
             OPAQUE
         );
     } break;
+    case PLAYER_STATE_LOST_LIFE: {
+        if (has_flag(player->flags, PLAYER_FLAG_HIDDEN)) {
+            break;
+        }
+        atlas_draw(
+            state,
+            TEX_PLAYER_2,
+            player->spinner_position,
+            player->rotation,
+            1.0f,
+            OPAQUE
+        );
+    } break;
     case PLAYER_STATE_INHALED_BY_PORTAL:
     case PLAYER_STATE_EXHALED_BY_PORTAL: {
         float x = portal_distance_to_center_ratio(state, player->spinner_position);
@@ -280,7 +336,4 @@ void player_render(State *state) {
     case PLAYER_STATE_INSIDE_PORTAL:
         break;
     }
-
-    Vector2 home_position = { player->home_position, -0.9f };
-    atlas_draw(state, TEX_GIANT_BIRD_1, home_position, 0, 1.0f, WHITE);
 }
