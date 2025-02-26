@@ -8,7 +8,7 @@
     #define ASSERT(condition)\
         do {\
             if (!(condition)) {\
-                printf("You are a horrible person: (%s)\n", #condition);\
+                printf("You are a horrible person\n -> %s:%i", __FILE__, __LINE__);\
                 exit(1);\
             }\
         } while (0)
