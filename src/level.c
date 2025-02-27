@@ -167,6 +167,37 @@ static int setup_texture_scrollers_for_current_level(State *state) {
 
         texture_scroller_amount = 5;
     } break;
+    case AREA_CASTLE: {
+        tex_scrollers[0].tex = TEX_AREA_WINTER_SKY;
+        tex_scrollers[0].horizontal_textures = 4;
+        tex_scrollers[0].horizontal_speed = -0.03f;
+        tex_scrollers[0].vertical_textures = 2;
+        tex_scrollers[0].vertical_speed = 0.0f;
+        tex_scrollers[0].opacity = 255;
+
+        tex_scrollers[1].tex = TEX_AREA_CASTLE_MOUNTAIN;
+        tex_scrollers[1].horizontal_textures = 4;
+        tex_scrollers[1].horizontal_speed = 0.03f;
+        tex_scrollers[1].vertical_textures = 1;
+        tex_scrollers[1].vertical_speed = 0.0f;
+        tex_scrollers[1].opacity = 255;
+
+        tex_scrollers[2].tex = TEX_AREA_CASTLE_SILHOUETTES;
+        tex_scrollers[2].horizontal_textures = 4;
+        tex_scrollers[2].horizontal_speed = 0.15f;
+        tex_scrollers[2].vertical_textures = 1;
+        tex_scrollers[2].vertical_speed = 0.0f;
+        tex_scrollers[2].opacity = 255;
+
+        tex_scrollers[3].tex = TEX_AREA_CASTLE_BRICKS;
+        tex_scrollers[3].horizontal_textures = 4;
+        tex_scrollers[3].horizontal_speed = 0.75f;
+        tex_scrollers[3].vertical_textures = 1;
+        tex_scrollers[3].vertical_speed = 0.0f;
+        tex_scrollers[3].opacity = 255;
+
+        texture_scroller_amount = 4;
+    } break;
     }
     for (int i = 0; i < texture_scroller_amount; i++) {
         ASSERT(i < TEXTURE_SCROLLER_CAP);

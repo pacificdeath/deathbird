@@ -81,7 +81,7 @@ void atlas_init(State *state) {
 
     data.start_texture = TEX_AREA_INDUSTRIAL_FENCE;
     data.texture_size = 128;
-    data.consecutive_textures = 2;
+    data.consecutive_textures = 6;
     data.reset_x_and_offset_y = 128;
     add_texture(state, &data);
 

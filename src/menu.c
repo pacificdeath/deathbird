@@ -16,6 +16,7 @@ typedef enum Suboption {
     SUBOPTION_LEVEL_MEADOWS = 1,
     SUBOPTION_LEVEL_MOUNTAINS = 2,
     SUBOPTION_LEVEL_INDUSTRIAL = 3,
+    SUBOPTION_LEVEL_CASTLE = 4,
 } Suboption;
 
 static void draw_default_menu_background(State *state) {
@@ -397,7 +398,7 @@ static void view_option_data(State *state, Option option_type) {
         draw_suboption_text(state, buffer, info_line_idx);
         info_line_idx++;
         int red_birds_destroyed = 0;
-        for (int i = AREA_FOREST; i <= AREA_INDUSTRIAL; i++) {
+        for (int i = AREA_FOREST; i <= AREA_CASTLE; i++) {
             int flag = 1 << i;
             if (has_flag(state->red_birds_destroyed_bits, flag)) {
                 red_birds_destroyed++;
@@ -422,6 +423,9 @@ static void view_option_data(State *state, Option option_type) {
         draw_suboption_text(state, buffer, info_line_idx);
         info_line_idx++;
         sprintf(buffer, "Red");
+        draw_suboption_text(state, buffer, info_line_idx);
+        info_line_idx++;
+        sprintf(buffer, "Castle");
         draw_suboption_text(state, buffer, info_line_idx);
     } break;
     case OPTION_SHOP: {
@@ -650,7 +654,7 @@ Area menu_update(State *state) {
         }
     } break;
     case MENU_STATE_LEVEL_SELECT: {
-        cursor_movement(&menu->suboption_idx, &menu->suboption_offset, 4);
+        cursor_movement(&menu->suboption_idx, &menu->suboption_offset, 5);
         if (left || IsKeyPressed(KEY_BACKSPACE)) {
             menu->state = MENU_STATE_DEFAULT;
         } else if (select) {
@@ -659,6 +663,7 @@ Area menu_update(State *state) {
             case SUBOPTION_LEVEL_MEADOWS:       return AREA_MEADOWS;
             case SUBOPTION_LEVEL_MOUNTAINS:     return AREA_MOUNTAINS;
             case SUBOPTION_LEVEL_INDUSTRIAL:    return AREA_INDUSTRIAL;
+            case SUBOPTION_LEVEL_CASTLE:        return AREA_CASTLE;
             }
         }
     } break;

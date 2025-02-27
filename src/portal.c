@@ -39,6 +39,9 @@ Portal_Bits portal_area_color(Area area) {
     case AREA_INDUSTRIAL: {
         return PORTAL_BIT_RED;
     } break;
+    case AREA_CASTLE: {
+        return PORTAL_BIT_BLACK;
+    } break;
     default: {
         return PORTAL_BIT_NONE;
     } break;

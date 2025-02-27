@@ -275,7 +275,8 @@ int main(void) {
                     case AREA_FOREST: travel_to_area(state, AREA_MEADOWS); break;
                     case AREA_MEADOWS: travel_to_area(state, AREA_MOUNTAINS); break;
                     case AREA_MOUNTAINS: travel_to_area(state, AREA_INDUSTRIAL); break;
-                    case AREA_INDUSTRIAL: travel_to_area(state, AREA_FOREST); break;
+                    case AREA_INDUSTRIAL: travel_to_area(state, AREA_CASTLE); break;
+                    case AREA_CASTLE: travel_to_area(state, AREA_FOREST); break;
                     default: travel_to_area(state, AREA_FOREST); break;
                     }
                 } else {

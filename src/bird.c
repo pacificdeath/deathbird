@@ -278,7 +278,7 @@ void birds_init(State *state) {
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_GORE_1] = (Vector3){1.0f,0.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_GORE_2] = (Vector3){0.75f,0.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_GORE_3] = (Vector3){0.5f,0.0f,0.0f};
-    state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_UMBRELLA_HANDLE] = (Vector3){0.25f,0.125f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_UMBRELLA_HANDLE] = (Vector3){0.75f,0.37f,0.0f};
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_1] = (Vector3){1.0f,0.5f,0.75f};
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_2] = (Vector3){0.0f,1.0f,1.0f};
     state->bird_palette[BIRD_PALETTE_BROWN][BIRD_PALETTE_IDX_EXPLOSION_1] = (Vector3){1.0f,1.0f,0.0f};
@@ -301,6 +301,22 @@ void birds_init(State *state) {
     state->bird_palette[BIRD_PALETTE_RED][BIRD_PALETTE_IDX_EXPLOSION_2] = (Vector3){1.0f,0.5f,0.0f};
     state->bird_palette[BIRD_PALETTE_RED][BIRD_PALETTE_IDX_EXPLOSION_3] = (Vector3){1.0f,0.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_RED][BIRD_PALETTE_IDX_EXPLOSION_4] = (Vector3){0.75f,0.75f,0.75f};
+
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_OUTLINE] = (Vector3){0.0f,0.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_BODY] = (Vector3){0.25f,0.25f,0.25f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_BEAK_1] = (Vector3){0.5f,0.5f,0.5f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_BEAK_2] = (Vector3){0.25f,0.25f,0.25f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EYES] = (Vector3){1.0f,1.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_GORE_1] = (Vector3){1.0f,0.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_GORE_2] = (Vector3){0.75f,0.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_GORE_3] = (Vector3){0.5f,0.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_HANDLE] = (Vector3){0.5f,0.25f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_1] = (Vector3){1.0f,1.0f,1.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_2] = (Vector3){0.0f,1.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_1] = (Vector3){1.0f,1.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_2] = (Vector3){1.0f,0.5f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_3] = (Vector3){1.0f,0.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_4] = (Vector3){0.75f,0.75f,0.75f};
 }
 
 void birds_cleanup(State *state) {
@@ -573,6 +589,7 @@ void birds_prepare_shader(State *state, Area area) {
     case AREA_MEADOWS: palette = state->bird_palette[BIRD_PALETTE_YELLOW]; break;
     case AREA_MOUNTAINS: palette = state->bird_palette[BIRD_PALETTE_BROWN]; break;
     case AREA_INDUSTRIAL: palette = state->bird_palette[BIRD_PALETTE_RED]; break;
+    case AREA_CASTLE: palette = state->bird_palette[BIRD_PALETTE_BLACK]; break;
     }
 
     ASSERT(palette != NULL);
