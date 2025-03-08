@@ -10,6 +10,7 @@
 #include "menu.c"
 #include "fader.c"
 #include "portal.c"
+#include "cartoon_transition.c"
 
 #define AREA_TEXTURE_SIZE 128.0f
 
@@ -137,11 +138,10 @@ int catch_window_resize(State *state) {
 void travel_to_area(State *state, Area area) {
     state->area = area;
     state->birds_requested = 0;
-    Portal_Bits portal_color_bit = portal_area_color(area);
-    portal_setup(state, PORTAL_BIT_INHALE | portal_color_bit);
-    birds_give_alive_ones_to_portal(state);
     menu_level_setup(state);
-    state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_APPEAR;
+    player_level_setup(state);
+    level_load_next(state);
+    birds_prepare_shader(state, area);
 }
 
 int main(void) {
@@ -184,6 +184,7 @@ int main(void) {
         birds_init(state);
         menu_init(state);
         menu_level_setup(state);
+        cartoon_transition_init(state);
     }
     portal_setup(state, PORTAL_BIT_RED);
 
@@ -198,7 +199,7 @@ int main(void) {
                 static int shader_idx = 0;
                 if (IsKeyPressed(KEY_S)) {
                     shader_idx++;
-                    if (shader_idx > AREA_INDUSTRIAL) {
+                    if (shader_idx > AREA_CASTLE) {
                         shader_idx = 0;
                     }
                 }
@@ -231,32 +232,9 @@ int main(void) {
 
         switch (state->global_state) {
         case GLOBAL_STATE_MENU: {
-            level_update(state);
-            birds_update(state);
             int area = menu_update(state);
-            if (area >= 0) {
+            if (area != AREA_NONE) {
                 travel_to_area(state, area);
-            }
-        } break;
-        case GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR: {
-            level_update(state);
-            if (portal_appear(state)) {
-                state->global_state = GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE;
-            }
-        } break;
-        case GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE: {
-            level_update(state);
-            player_update(state);
-            birds_update(state);
-            if (portal_exhale(state)) {
-                state->global_state = GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR;
-            }
-        } break;
-        case GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR: {
-            level_update(state);
-            player_update(state);
-            if (portal_disappear(state)) {
-                birds_prepare_shader(state, state->area);
                 state->global_state = GLOBAL_STATE_GAME;
             }
         } break;
@@ -266,75 +244,35 @@ int main(void) {
             // state of the birds which should be handled the same frame
             player_update(state);
             birds_update(state);
+            cartoon_transition_update(state);
             bool level_success = state->portal_fuel >= state->current_level.required_fuel;
             bool level_fail = false;
             if (level_success || level_fail) {
                 state->portal_fuel = 0;
                 if (level_success) {
-                    switch (state->area) {
-                    case AREA_FOREST: travel_to_area(state, AREA_MEADOWS); break;
-                    case AREA_MEADOWS: travel_to_area(state, AREA_MOUNTAINS); break;
-                    case AREA_MOUNTAINS: travel_to_area(state, AREA_INDUSTRIAL); break;
-                    case AREA_INDUSTRIAL: travel_to_area(state, AREA_CASTLE); break;
-                    case AREA_CASTLE: travel_to_area(state, AREA_FOREST); break;
-                    default: travel_to_area(state, AREA_FOREST); break;
-                    }
+                    birds_destroy_all(state);
+                    state->global_state = GLOBAL_STATE_WIN;
                 } else {
                     portal_setup(state, PORTAL_BIT_INHALE | PORTAL_BIT_BLACK);
                     birds_give_alive_ones_to_portal(state);
                     menu_game_over_setup(state);
                 }
-                state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
-                state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_APPEAR;
             }
         } break;
-        case GLOBAL_STATE_POST_GAME_PORTAL_APPEAR: {
+        case GLOBAL_STATE_WIN: {
             level_update(state);
-            player_update(state);
             birds_update(state);
-            if (portal_appear(state)) {
-                state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_INHALE;
-            }
-        } break;
-        case GLOBAL_STATE_POST_GAME_PORTAL_INHALE: {
-            level_update(state);
-            player_update(state);
-            birds_update(state);
-            if (portal_inhale(state)) {
-                state->global_state = GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR;
-            }
-        } break;
-        case GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR: {
-            level_update(state);
-            if (portal_disappear(state)) {
-                state->global_state = GLOBAL_STATE_FADE_OUT;
-            }
-        } break;
-        case GLOBAL_STATE_FADE_OUT: {
-            if (state->fader_state == FADER_STATE_OUT_COMPLETE) {
-                if (false) {
-                    state->global_state = GLOBAL_STATE_GAME_OVER;
-                } else {
-                    player_level_setup(state);
-                    switch (state->area) {
-                    case AREA_FOREST:       level_load_next(state); break;
-                    case AREA_MEADOWS:      level_load_next(state); break;
-                    case AREA_MOUNTAINS:    level_load_next(state); break;
-                    default:                level_load_next(state); break;
-                    }
-                    state->global_state = GLOBAL_STATE_FADE_IN;
+            cartoon_transition_update(state);
+            if (birds_all_available(state) && cartoon_transition_is_full_darkness(state)) {
+                switch (state->area) {
+                case AREA_FOREST: travel_to_area(state, AREA_MEADOWS); break;
+                case AREA_MEADOWS: travel_to_area(state, AREA_MOUNTAINS); break;
+                case AREA_MOUNTAINS: travel_to_area(state, AREA_INDUSTRIAL); break;
+                case AREA_INDUSTRIAL: travel_to_area(state, AREA_CASTLE); break;
+                case AREA_CASTLE: travel_to_area(state, AREA_FOREST); break;
+                default: travel_to_area(state, AREA_FOREST); break;
                 }
-            } else {
-                level_update(state);
-                fade_out(state);
-            }
-        } break;
-        case GLOBAL_STATE_FADE_IN: {
-            if (state->fader_state == FADER_STATE_IN_COMPLETE) {
-                state->global_state = GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR;
-            } else {
-                level_update(state);
-                fade_in(state);
+                state->global_state = GLOBAL_STATE_GAME;
             }
         } break;
         case GLOBAL_STATE_GAME_OVER: {
@@ -350,33 +288,18 @@ int main(void) {
 
         switch (state->global_state) {
         case GLOBAL_STATE_MENU: {
-            level_render(state);
-            birds_render(state);
             menu_render(state);
-        } break;
-        case GLOBAL_STATE_FADE_IN:
-        case GLOBAL_STATE_FADE_OUT: {
-            level_render(state);
-            fader_render(state);
-        } break;
-        case GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR:
-        case GLOBAL_STATE_POST_GAME_PORTAL_DISAPPEAR: {
-            level_render(state);
-            portal_render(state);
-        } break;
-        case GLOBAL_STATE_PRE_GAME_PORTAL_EXHALE:
-        case GLOBAL_STATE_PRE_GAME_PORTAL_DISAPPEAR:
-        case GLOBAL_STATE_POST_GAME_PORTAL_APPEAR:
-        case GLOBAL_STATE_POST_GAME_PORTAL_INHALE: {
-            level_render(state);
-            portal_render(state);
-            birds_render(state);
-            player_render(state);
         } break;
         case GLOBAL_STATE_GAME: {
             level_render(state);
             birds_render(state);
             player_render(state);
+            cartoon_transition_render(state);
+        } break;
+        case GLOBAL_STATE_WIN: {
+            level_render(state);
+            birds_render(state);
+            cartoon_transition_render(state);
         } break;
         case GLOBAL_STATE_GAME_OVER: {
             game_over_text(state);

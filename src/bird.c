@@ -113,6 +113,7 @@ static void death_animation_render(State *state, Bird *bird) {
 }
 
 static void bird_death_setup(Bird *bird, Vector2 master_velocity, float multiplier) {
+    bird->state = BIRD_STATE_DEAD;
     for (int i = 0; i < BIRD_DEATH_PARTS; i++) {
         bird->dead.positions[i] = bird->position;
         Vector2 velocity = {
@@ -190,7 +191,7 @@ static void setup_bird_by_level(State *state, Bird *bird) {
 
     bird->anim_time = 0.0f;
 
-    bird->alive.move_speed = 0.2f + (bird->position.y + 1.0f) * 0.3f;
+    bird->alive.move_speed = 0.3f + (bird->position.y + 1.0f) * 0.3f;
     bird->alive.current_tex = 0;
     bird->alive.damage_timer = 0.0f;
 
@@ -312,11 +313,33 @@ void birds_init(State *state) {
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_GORE_3] = (Vector3){0.5f,0.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_HANDLE] = (Vector3){0.5f,0.25f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_1] = (Vector3){1.0f,1.0f,1.0f};
-    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_2] = (Vector3){0.0f,1.0f,0.0f};
+    state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_UMBRELLA_CANOPY_2] = (Vector3){1.0f,0.5f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_1] = (Vector3){1.0f,1.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_2] = (Vector3){1.0f,0.5f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_3] = (Vector3){1.0f,0.0f,0.0f};
     state->bird_palette[BIRD_PALETTE_BLACK][BIRD_PALETTE_IDX_EXPLOSION_4] = (Vector3){0.75f,0.75f,0.75f};
+}
+
+bool birds_all_available(State *state) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
+        if (state->birds[i].state != BIRD_STATE_AVAILABLE) return false;
+    }
+    return true;
+}
+
+void birds_destroy_all(State *state) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
+        Bird *b = &state->birds[i];
+        if (b->state == BIRD_STATE_ALIVE) {
+            bird_death_setup(b, (Vector2){0}, 1.0f);
+        }
+    }
+}
+
+void birds_reset(State *state) {
+    for (int i = 0; i < BIRD_CAPACITY; i++) {
+        state->birds[i].state = BIRD_STATE_AVAILABLE;
+    }
 }
 
 void birds_cleanup(State *state) {
@@ -333,10 +356,7 @@ void birds_update(State *state) {
 
     int available_birds = BIRD_CAPACITY - birds_in_use;
 
-    bool is_global_state_suitable_for_birds = (
-        state->global_state == GLOBAL_STATE_GAME ||
-        state->global_state == GLOBAL_STATE_MENU
-    );
+    bool is_global_state_suitable_for_birds = state->global_state == GLOBAL_STATE_GAME;
     bool we_need_more_birds = state->birds_requested < available_birds;
 
     if (is_global_state_suitable_for_birds && we_need_more_birds) {
@@ -495,7 +515,6 @@ Bird_Hit bird_try_destroy(State *state, Bird *bird, Vector2 from, float velocity
         ASSERT(bird->type < BIRD_TYPES_TOTAL);
 
         state->birds_destroyed[bird->type]++;
-        bird->state = BIRD_STATE_DEAD;
 
         if (bird->type == BIRD_TYPE_BOMB) {
             bird_death_setup(bird, (Vector2){0}, EXPLOSIVE_VELOCITY_MULTIPLIER);

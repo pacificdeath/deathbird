@@ -52,7 +52,7 @@ static void handle_score(State *state) {
     if (multiplier == 0) {
         return;
     }
-    int last_place = MENU_LINE_COUNT - 1;
+    int last_place = MENU_OPTION_COUNT - 1;
     if (multiplier > state->bird_highest_multipliers[last_place]) {
         state->bird_highest_multipliers[last_place] = multiplier;
         for (int i = last_place - 1; i >= 0; i--) {
@@ -77,16 +77,16 @@ void player_init(Player *p) {
 void player_level_setup(State *state) {
     Player *player = &state->player;
 
-    player->state = PLAYER_STATE_INSIDE_PORTAL;
+    player->state = PLAYER_STATE_GROUNDED;
     player->spinner_position.x = 0.0f;
-    player->spinner_position.y = 0.0f;
+    player->spinner_position.y = GAME_GROUND_Y;
     state->level_score = 0;
     for (int i = 0; i < BIRD_TYPES_TOTAL; i++) {
         state->birds_destroyed[i] = 0;
     }
     state->bird_multiplier = 0;
     state->bird_multiplier_timer = 0.0f;
-    for (int i = 0; i < MENU_LINE_COUNT - 1; i++) {
+    for (int i = 0; i < MENU_OPTION_COUNT - 1; i++) {
         state->bird_highest_multipliers[i] = 0;
     }
     player->last_turnaround_y = -1.0f;

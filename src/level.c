@@ -125,7 +125,7 @@ static int setup_texture_scrollers_for_current_level(State *state) {
         tex_scrollers[4].horizontal_speed = -0.45f;
         tex_scrollers[4].vertical_textures = 3;
         tex_scrollers[4].vertical_speed = -0.75f;
-        tex_scrollers[4].opacity = 128;
+        tex_scrollers[4].opacity = 192;
 
         texture_scroller_amount = 5;
     } break;
@@ -168,7 +168,7 @@ static int setup_texture_scrollers_for_current_level(State *state) {
         texture_scroller_amount = 5;
     } break;
     case AREA_CASTLE: {
-        tex_scrollers[0].tex = TEX_AREA_WINTER_SKY;
+        tex_scrollers[0].tex = TEX_AREA_CASTLE_SKY;
         tex_scrollers[0].horizontal_textures = 4;
         tex_scrollers[0].horizontal_speed = -0.03f;
         tex_scrollers[0].vertical_textures = 2;
@@ -217,7 +217,7 @@ static Level generate_level_data(State *state) {
         float bird_frequency_loss_per_level = min_max_frequency_diff / LEVELS_BEFORE_MIN_FREQUENCY;
         float bird_frequency_loss = bird_frequency_loss_per_level * state->level_idx;
         level.bird_frequency = MAX_BIRD_FREQUENCY - bird_frequency_loss;
-        level.required_fuel = 10 + (state->level_idx * 5);
+        level.required_fuel = 2 + (state->level_idx * 5);
     }
 
     return level;
@@ -266,7 +266,7 @@ inline static int calc_font_size(State *state) {
     return (MENU_FONT_SIZE / state->menu.font.baseSize) * state->scale_multiplier;
 }
 
-Vector2 text_box(State *state, char *buffer, Vector2 position, Color bg_color, Color fg_color) {
+Vector2 text_box(State *state, const char *buffer, Vector2 position, Color bg_color, Color fg_color) {
     int font_size = calc_font_size(state);
     Vector2 text_dimensions = MeasureTextEx(state->menu.font, buffer, font_size, 0);
     DrawRectangleV(position, text_dimensions, bg_color);
@@ -290,10 +290,8 @@ void level_render(State *state) {
             }
         }
     }
-    char buffer[16];
-    sprintf(buffer, " Level: %i ", state->level_idx);
     Vector2 position = { .x = state->game_left, .y = state->game_top };
-    Vector2 text_dimensions = text_box(state, buffer, position, LEVEL_IDX_TEXT_BG_COLOR, LEVEL_IDX_TEXT_COLOR);
+    Vector2 text_dimensions = text_box(state, TextFormat(" Level: %i ", state->level_idx), position, LEVEL_IDX_TEXT_BG_COLOR, LEVEL_IDX_TEXT_COLOR);
 
     float fuel_bar_width = state->game_width * 0.4f;
     Rectangle fuel_bar_rec = {
@@ -306,14 +304,32 @@ void level_render(State *state) {
     render_bar(fuel_bar_rec, fill_percent);
 
     int font_size = calc_font_size(state);
+
+    const char *string = TextFormat("%i / %i", state->portal_fuel, state->current_level.required_fuel);
+    text_dimensions = MeasureTextEx(state->menu.font, string, font_size, 0);
+    DrawTextPro(
+        state->menu.font,
+        string,
+        (Vector2){
+            fuel_bar_rec.x + (fuel_bar_rec.width/2) - (text_dimensions.x/2),
+            fuel_bar_rec.y + (fuel_bar_rec.height/2) - (text_dimensions.y/2)
+        },
+        (Vector2){0},
+        0,
+        font_size,
+        0,
+        MULTIPLIER_TEXT_COLOR
+    );
+
     if (state->bird_multiplier_timer > 0.0f) {
-        sprintf(buffer, " %ix-Multiplier ", state->bird_multiplier_display);
-        Vector2 multiplier_text_dimensions = MeasureTextEx(state->menu.font, buffer, font_size, 0);
+        string = TextFormat("%ix-Multiplier ", state->bird_multiplier_display);
+        Vector2 multiplier_text_dimensions = MeasureTextEx(state->menu.font, string, font_size, 0);
         Vector2 multiplier_text_position = {
             .x = state->game_right - multiplier_text_dimensions.x,
             .y = state->game_top
         };
         DrawRectangleV(multiplier_text_position, multiplier_text_dimensions, MULTIPLIER_TEXT_BG_COLOR);
-        DrawTextPro(state->menu.font, buffer, multiplier_text_position, (Vector2){0}, 0, font_size, 0, MULTIPLIER_TEXT_COLOR);
+        DrawTextPro(state->menu.font, string, multiplier_text_position, (Vector2){0}, 0, font_size, 0, MULTIPLIER_TEXT_COLOR);
     }
 }
+
