@@ -6,7 +6,7 @@
 #define CARTOON_TRANSITION_FULL_DARKNESS 0.0f
 
 void cartoon_transition_init(State *state) {
-    state->cartoon_transition_shader = LoadShader(NULL, "./src/shaders/cartoon_transition.fs");
+    state->cartoon_transition_shader = LoadShader(NULL, "./src/shaders/cartoon_transition.glsl");
     state->cartoon_transition_shader_location_resolution = GetShaderLocation(
         state->cartoon_transition_shader,
         "resolution"

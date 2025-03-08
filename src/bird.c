@@ -234,9 +234,9 @@ static void setup_bird_by_level(State *state, Bird *bird) {
 }
 
 void birds_init(State *state) {
-    state->bird_shader = LoadShader(0, "./src/shaders/bird.fs");
+    state->bird_shader = LoadShader(0, "./src/shaders/bird.glsl");
     state->bird_shader_palette_location = GetShaderLocation(state->bird_shader, "palette");
-    state->bird_damage_shader = LoadShader(0, "./src/shaders/bird_damage.fs");
+    state->bird_damage_shader = LoadShader(0, "./src/shaders/bird_damage.glsl");
     state->birds_requested = 0;
 
     state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_OUTLINE] = (Vector3){0.0f,0.0f,0.0f};

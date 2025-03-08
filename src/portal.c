@@ -54,7 +54,7 @@ void portal_init(State *state) {
     Image image = GenImageColor(1, 1, WHITE);
     state->portal_texture = LoadTextureFromImage(image);
     SetShapesTexture(state->portal_texture, (Rectangle){ 0.0f, 0.0f, 1.0f, 1.0f });
-    state->portal_shader = LoadShader((void *)0, "./src/shaders/portal.fs");
+    state->portal_shader = LoadShader((void *)0, "./src/shaders/portal.glsl");
 }
 
 void portal_cleanup(State *state) {
