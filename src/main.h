@@ -39,10 +39,9 @@
 #define MENU_FONT_SIZE 250
 #define MENU_BG_COLOR ((Color) { 0, 0, 192, 255 })
 #define MENU_CURSOR_BG_COLOR ((Color) { 255, 0, 0, 255 })
-#define MENU_HIGHLIGHT_COLOR ((Color) { 0, 255, 0, 255 })
 #define MENU_FG_COLOR ((Color) { 255, 255, 255, 255 })
-#define MENU_TEXT_COLOR ((Color) { 255, 255, 0, 255 })
-#define MENU_ACTIVE_LEVEL_COLOR ((Color) { 0, 255, 0, 255 })
+#define MENU_OPTION_COLOR ((Color) { 255, 255, 0, 255 })
+#define MENU_OPTION_SELECTED_COLOR ((Color) { 255, 255, 255, 255 })
 #define MENU_OPTION_COUNT 16
 
 #define PORTAL_RADIUS 0.4f
@@ -293,12 +292,11 @@ typedef struct Menu {
     uint16 center_y;
 
     float font_size;
-    float x_fract;
-    float y_fract;
     float header_size;
     float line_section_size;
     float line_size;
-    float footer_size;
+    float instruction_size;
+    float description_size;
     float decor_line_size;
 
     Menu_State state;
