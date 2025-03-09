@@ -183,7 +183,7 @@ int main(void) {
         player_init(&state->player);
         player_level_setup(state);
         birds_init(state);
-        terminal_reset(&state->terminal);
+        terminal_init(state);
         menu_init(state);
         menu_level_setup(state);
         cartoon_transition_init(state);
@@ -223,6 +223,7 @@ int main(void) {
         if (IsWindowResized()) {
             update_state_dimensions_window(state, GetScreenWidth(), GetScreenHeight());
             menu_update_dimensions(state);
+            terminal_update_dimensions(state);
             skip_frames = 2;
             continue;
         }

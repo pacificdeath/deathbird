@@ -38,7 +38,8 @@
 #define TERMINAL_LINE_CAPACITY 32
 #define TERMINAL_LINE_MAX_LENGTH 64
 #define TERMINAL_BG_COLOR ((Color){0,0,0,255})
-#define TERMINAL_FG_COLOR ((Color){255,255,0,255})
+#define TERMINAL_FG_COLOR ((Color){255,255,255,255})
+#define TERMINAL_FUZZY_COLOR ((Color){0,128,0,255})
 
 #define MENU_FONT "bios.ttf"
 #define MENU_FONT_SIZE 250
@@ -289,13 +290,27 @@ typedef struct Texture_Scroller {
     uint8 opacity;
 } Texture_Scroller;
 
+enum {
+    COMMAND_PLAY,
+    COMMAND_TOTAL,
+};
 
+struct State;
+
+typedef struct Command {
+    int command_idx;
+    char *name;
+    void (*function)(void *data);
+} Command;
 
 typedef struct Terminal {
+    Rectangle rectangle;
     char lines[TERMINAL_LINE_CAPACITY][TERMINAL_LINE_MAX_LENGTH];
     int current_line;
     int current_char;
     float process_timer;
+    Command commands[COMMAND_TOTAL];
+    char fuzzy[];
 } Terminal;
 
 typedef struct Menu {

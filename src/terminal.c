@@ -3,6 +3,18 @@
 
 #define TERMINAL_LINE_START 4
 
+inline static bool is_whitespace(char c) {
+    return c == ' ' || c == '\0';
+}
+
+inline static int find_next_non_whitespace(char *string, int idx) {
+    while (string[idx] == ' ');
+    if (idx >= (TERMINAL_LINE_MAX_LENGTH - 1)) {
+        return -1;
+    }
+    return idx;
+}
+
 char *terminal_get_menu_startup_text(Terminal *terminal) {
     switch (terminal->current_line) {
         case 0: return ">>> initializing bird computer...";
@@ -35,10 +47,68 @@ static void terminal_new_line(Terminal *terminal) {
     terminal->current_char = TERMINAL_LINE_START;
 }
 
-void terminal_reset(Terminal *terminal) {
+inline static void terminal_reset(Terminal *terminal) {
     terminal->current_line = -1;
     terminal_new_line(terminal);
     terminal->process_timer = 0.0f;
+}
+
+void terminal_update_dimensions(State *state) {
+    Terminal *terminal = &state->terminal;
+    const int padding = state->game_width * 0.01f;
+    terminal->rectangle = (Rectangle) {
+        padding,
+        padding,
+        state->game_width - (padding * 2),
+        state->game_height - (padding * 2),
+    };
+}
+
+static Command *fuzzy_find_command(Terminal *terminal, char *text) {
+    int closest_match = -1;
+    int closest_match_score = 0;
+    for (int i = 0; i < COMMAND_TOTAL; i++) {
+        Command *c = &terminal->commands[i];
+        int score = 0;
+        for (int j = 0; c->name[j] != '\0'; j++) {
+            if (text[TERMINAL_LINE_START + j] == c->name[j]) {
+                score++;
+            }
+        }
+        if (score > 0 && score > closest_match_score) {
+            closest_match = i;
+            closest_match_score = score;
+        }
+    }
+    if (closest_match < 0) {
+        return NULL;
+    }
+    return &terminal->commands[closest_match];
+}
+
+static Command *try_get_command(Terminal *terminal, char *text) {
+    for (int i = 0; i < COMMAND_TOTAL; i++) {
+        if (TextIsEqual(terminal->commands[i].name, text)) {
+            return &terminal->commands[i];
+        }
+    }
+    return NULL;
+}
+
+static void command_play(void *data) {
+    TraceLog(LOG_ERROR, "X40");
+}
+
+inline static void terminal_register_command(Terminal *terminal, int idx, char *name, void (*function)(void *)) {
+    ASSERT(idx < COMMAND_TOTAL);
+    terminal->commands[idx] = (Command) { idx, name, function };
+}
+
+void terminal_init(State *state) {
+    Terminal *terminal = &state->terminal;
+    terminal_update_dimensions(state);
+    terminal_reset(terminal);
+    terminal_register_command(terminal, COMMAND_PLAY, "play", command_play);
 }
 
 void terminal_setup(State *state) {
@@ -107,10 +177,16 @@ bool terminal_update(State *state) {
             break;
         }
         case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
+            char *line = terminal->lines[terminal->current_line];
             for (int key = KEY_A; key <= KEY_Z; key++) {
                 if (IsKeyPressed(key)) {
                     char c = key + 32;
                     terminal_add_char(terminal, c);
+                }
+            }
+            for (int key = KEY_ZERO; key <= KEY_NINE; key++) {
+                if (IsKeyPressed(key)) {
+                    terminal_add_char(terminal, key);
                 }
             }
             if (IsKeyPressed(KEY_SPACE)) {
@@ -118,10 +194,40 @@ bool terminal_update(State *state) {
             }
             if (IsKeyPressed(KEY_BACKSPACE) && terminal->current_char > TERMINAL_LINE_START) {
                 terminal->current_char--;
-                terminal->lines[terminal->current_line][terminal->current_char] = '\0';
+                line[terminal->current_char] = '\0';
             }
             if (IsKeyPressed(KEY_ENTER)) {
+                char buffer[TERMINAL_LINE_MAX_LENGTH];
+                int command_1_offset = find_next_non_whitespace(line, TERMINAL_LINE_START);
+                if (command_1_offset >= TERMINAL_LINE_START) {
+                    int buffer_idx = 0;
+                    int i;
+                    for (i = 0; !is_whitespace(line[command_1_offset + 1]); i++) {
+                        buffer[i] = line[command_1_offset + i];
+                    }
+                    buffer[i] = '\0';
+                }
+                Command *command = try_get_command(terminal, buffer);
+                if (command != NULL) {
+                    command->function(state);
+                } else {
+                    TraceLog(LOG_ERROR, "You are a horrible person");
+                }
                 terminal_new_line(terminal);
+            }
+            terminal->fuzzy[0] = '\0';
+            if (terminal->current_char > TERMINAL_LINE_START) {
+                Command *fuzzy_command = fuzzy_find_command(terminal, line);
+                if (fuzzy_command != NULL) {
+                    for (int i = 0; i <= terminal->current_char; i++) {
+                        terminal->fuzzy[i] = ' ';
+                    }
+                    int i;
+                    for (i = terminal->current_char; fuzzy_command->name[i - TERMINAL_LINE_START] != '\0'; i++) {
+                        terminal->fuzzy[i] = fuzzy_command->name[i - TERMINAL_LINE_START];
+                    }
+                    terminal->fuzzy[i] = '\0';
+                }
             }
             break;
         }
@@ -129,39 +235,56 @@ bool terminal_update(State *state) {
     return false;
 }
 
+inline static void terminal_render_line(State *state, char *line, int line_idx, int line_size, int char_size, Color color) {
+    Terminal *terminal = &state->terminal;
+    Vector2 position = {
+        0,
+        terminal->rectangle.y + line_idx * line_size
+    };
+    for (int i = 0; line[i] != '\0'; i++) {
+        position.x = terminal->rectangle.x + (i * char_size);
+        DrawTextCodepoint(
+            state->menu.font,
+            line[i],
+            position,
+            line_size,
+            color
+        );
+    }
+}
+
 void terminal_render(State *state) {
     Terminal *terminal = &state->terminal;
-    Rectangle rectangle = {
-        state->game_left,
-        state->game_top,
-        state->game_width,
-        state->game_height
-    };
-    DrawRectangleRec(rectangle, TERMINAL_BG_COLOR);
-    const int line_size = state->game_height / TERMINAL_LINE_CAPACITY;
-    const int char_size = state->game_width / TERMINAL_LINE_MAX_LENGTH;
+    DrawRectangleRec(terminal->rectangle, TERMINAL_BG_COLOR);
+    const int line_size = terminal->rectangle.height / TERMINAL_LINE_CAPACITY;
+    const int char_size = terminal->rectangle.width / TERMINAL_LINE_MAX_LENGTH;
     for (int i = 0; i <= terminal->current_line; i++) {
-        Vector2 position = {0, i * line_size};
-        for (int j = 0; terminal->lines[i][j] != '\0'; j++) {
-            position.x = (j * char_size);
-            DrawTextCodepoint(
-                state->menu.font,
-                terminal->lines[i][j],
-                position,
-                line_size,
-                TERMINAL_FG_COLOR
-            );
-        }
+        terminal_render_line(
+            state,
+            terminal->lines[i],
+            i,
+            line_size,
+            char_size,
+            TERMINAL_FG_COLOR
+        );
     }
+    terminal_render_line(
+        state,
+        terminal->fuzzy,
+        terminal->current_line,
+        line_size,
+        char_size,
+        TERMINAL_FUZZY_COLOR
+    );
 
     float cursor_y = line_size * terminal->current_line;
     Vector2 cursor_top = {
-        char_size * terminal->current_char,
-        cursor_y
+        terminal->rectangle.x + char_size * terminal->current_char,
+        terminal->rectangle.y + cursor_y
     };
     Vector2 cursor_bottom = {
-        char_size * terminal->current_char,
-        cursor_y + line_size
+        cursor_top.x,
+        terminal->rectangle.y + cursor_y + line_size
     };
     DrawLineEx(cursor_top, cursor_bottom, state->scale_multiplier, RED);
 }
