@@ -309,6 +309,7 @@ typedef struct Terminal {
     int current_line;
     int current_char;
     float process_timer;
+    int process_step;
     Command commands[COMMAND_TOTAL];
     char fuzzy[];
 } Terminal;

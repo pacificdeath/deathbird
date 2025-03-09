@@ -232,6 +232,11 @@ Area menu_update(State *state) {
     switch (menu->state) {
     default:
     case MENU_STATE_DEFAULT: {
+        if (IsKeyPressed(KEY_F10)) {
+            state->global_state = GLOBAL_STATE_TERMINAL_MANUAL_INPUT;
+            // TODO: bad code
+            terminal_setup(state);
+        }
         if (activation) {
             switch (menu->option_idx) {
                 default: break;
@@ -280,6 +285,9 @@ static void draw_instruction_text(Menu *menu) {
 
     switch (menu->state) {
     case MENU_STATE_DEFAULT:
+        position.y -= y_fract;
+        position.x = menu->center_x + x_fract;
+        draw_text(menu, "F10       : Terminal", position, MENU_FG_COLOR);
         break;
     case MENU_STATE_FREEPLAY:
         position.y -= y_fract;

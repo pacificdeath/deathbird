@@ -8,15 +8,17 @@ inline static bool is_whitespace(char c) {
 }
 
 inline static int find_next_non_whitespace(char *string, int idx) {
-    while (string[idx] == ' ');
+    while (is_whitespace(string[idx])) {
+        idx++;
+    }
     if (idx >= (TERMINAL_LINE_MAX_LENGTH - 1)) {
         return -1;
     }
     return idx;
 }
 
-char *terminal_get_menu_startup_text(Terminal *terminal) {
-    switch (terminal->current_line) {
+char *terminal_get_menu_startup_text(int step) {
+    switch (step) {
         case 0: return ">>> initializing bird computer...";
         case 1: return ">>> scanning for suitable bird kernels...";
         case 2: return ">>> suitable kernel found: BIRDCORE v:1999.41 [UNSTABLE]";
@@ -47,10 +49,16 @@ static void terminal_new_line(Terminal *terminal) {
     terminal->current_char = TERMINAL_LINE_START;
 }
 
+static void terminal_output_line(Terminal *terminal, char *text) {
+    TextCopy(terminal->lines[terminal->current_line], text);
+    terminal_new_line(terminal);
+}
+
 inline static void terminal_reset(Terminal *terminal) {
     terminal->current_line = -1;
     terminal_new_line(terminal);
     terminal->process_timer = 0.0f;
+    terminal->process_step = 0;
 }
 
 void terminal_update_dimensions(State *state) {
@@ -64,16 +72,21 @@ void terminal_update_dimensions(State *state) {
     };
 }
 
-static Command *fuzzy_find_command(Terminal *terminal, char *text) {
+static Command *fuzzy_find_command(Terminal *terminal, int start_char) {
+    char *text = terminal->lines[terminal->current_line];
+
     int closest_match = -1;
     int closest_match_score = 0;
+
     for (int i = 0; i < COMMAND_TOTAL; i++) {
         Command *c = &terminal->commands[i];
         int score = 0;
-        for (int j = 0; c->name[j] != '\0'; j++) {
-            if (text[TERMINAL_LINE_START + j] == c->name[j]) {
-                score++;
-            }
+        int text_idx = start_char;
+        int command_idx = 0;
+        while (!is_whitespace(c->name[command_idx]) && text[text_idx] == c->name[command_idx]) {
+            score++;
+            text_idx++;
+            command_idx++;
         }
         if (score > 0 && score > closest_match_score) {
             closest_match = i;
@@ -83,6 +96,7 @@ static Command *fuzzy_find_command(Terminal *terminal, char *text) {
     if (closest_match < 0) {
         return NULL;
     }
+
     return &terminal->commands[closest_match];
 }
 
@@ -136,11 +150,10 @@ static bool terminal_update_process(State *state) {
     Terminal *terminal = &state->terminal;
     terminal->process_timer += state->delta_time;
     if (terminal->process_timer > 0.01f) {
+        terminal->process_timer = 0.0f;
         if (GetRandomValue(0, 4) == 0) {
-            terminal->current_line++;
             return true;
         }
-        terminal->process_timer = 0.0f;
     }
     return false;
 }
@@ -161,14 +174,15 @@ bool terminal_update(State *state) {
     switch (state->global_state) {
         case GLOBAL_STATE_TERMINAL_MENU_STARTUP: {
             bool process_step_changed = terminal_update_process(state);
-            char *text = terminal_get_menu_startup_text(terminal);
-            if (text == NULL) {
-                terminal_reset(terminal);
-                return true;
-            }
-            ASSERT(TextLength(text) < (TERMINAL_LINE_MAX_LENGTH - 1));
-            if (!TextIsEqual(terminal->lines[terminal->current_line], text)) {
-                TextCopy(terminal->lines[terminal->current_line], text);
+            if (process_step_changed) {
+                char *text = terminal_get_menu_startup_text(terminal->process_step);
+                if (text == NULL) {
+                    terminal_reset(terminal);
+                    return true;
+                }
+                ASSERT(TextLength(text) < (TERMINAL_LINE_MAX_LENGTH - 1));
+                terminal_output_line(terminal, text);
+                terminal->process_step++;
             }
             break;
         }
@@ -196,39 +210,54 @@ bool terminal_update(State *state) {
                 terminal->current_char--;
                 line[terminal->current_char] = '\0';
             }
+
+            int command_start_idx = terminal->current_char;
+            while (command_start_idx > TERMINAL_LINE_START && !is_whitespace(line[command_start_idx - 1])) {
+                command_start_idx--;
+            }
+
+            terminal->fuzzy[0] = '\0';
+
+            if (terminal->current_char > TERMINAL_LINE_START) {
+                Command *fuzzy_command = fuzzy_find_command(terminal, command_start_idx);
+                if (fuzzy_command != NULL) {
+                    for (int i = 0; i <= terminal->current_char; i++) {
+                        terminal->fuzzy[i] = ' ';
+                    }
+
+                    int fuzzy_idx = terminal->current_char;
+                    int fuzzy_text_length = TextLength(fuzzy_command->name);
+
+                    int command_offset = terminal->current_char - command_start_idx;
+                    int command_idx = fuzzy_idx - terminal->current_char + command_offset;
+
+                    while (!(is_whitespace(fuzzy_command->name[command_idx])) && command_idx < fuzzy_text_length) {
+                        terminal->fuzzy[fuzzy_idx] = fuzzy_command->name[fuzzy_idx - terminal->current_char + command_offset];
+                        fuzzy_idx++;
+                        command_idx++;
+                    }
+                    terminal->fuzzy[fuzzy_idx] = '\0';
+                }
+            }
+
             if (IsKeyPressed(KEY_ENTER)) {
+                terminal_new_line(terminal);
                 char buffer[TERMINAL_LINE_MAX_LENGTH];
                 int command_1_offset = find_next_non_whitespace(line, TERMINAL_LINE_START);
-                if (command_1_offset >= TERMINAL_LINE_START) {
-                    int buffer_idx = 0;
-                    int i;
-                    for (i = 0; !is_whitespace(line[command_1_offset + 1]); i++) {
-                        buffer[i] = line[command_1_offset + i];
-                    }
-                    buffer[i] = '\0';
+                int buffer_idx = 0;
+                int i;
+                for (i = 0; !is_whitespace(line[command_1_offset + i]); i++) {
+                    buffer[i] = line[command_1_offset + i];
                 }
+                buffer[i] = '\0';
                 Command *command = try_get_command(terminal, buffer);
                 if (command != NULL) {
                     command->function(state);
                 } else {
                     TraceLog(LOG_ERROR, "You are a horrible person");
                 }
-                terminal_new_line(terminal);
             }
-            terminal->fuzzy[0] = '\0';
-            if (terminal->current_char > TERMINAL_LINE_START) {
-                Command *fuzzy_command = fuzzy_find_command(terminal, line);
-                if (fuzzy_command != NULL) {
-                    for (int i = 0; i <= terminal->current_char; i++) {
-                        terminal->fuzzy[i] = ' ';
-                    }
-                    int i;
-                    for (i = terminal->current_char; fuzzy_command->name[i - TERMINAL_LINE_START] != '\0'; i++) {
-                        terminal->fuzzy[i] = fuzzy_command->name[i - TERMINAL_LINE_START];
-                    }
-                    terminal->fuzzy[i] = '\0';
-                }
-            }
+
             break;
         }
     };

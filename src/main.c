@@ -192,7 +192,7 @@ int main(void) {
 
     int skip_frames = 0;
     while (!WindowShouldClose()) {
-        #if DEBUG
+        #if NEVER
             static bool atlas_debug_active = false;
             if (IsKeyPressed(KEY_A)) {
                 atlas_debug_active = !atlas_debug_active;
