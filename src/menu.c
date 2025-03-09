@@ -6,7 +6,7 @@ enum Option {
     OPTION_PLAY,
     OPTION_FREEPLAY,
     OPTION_MULTIPLIERS,
-    OPTION_TOTAL
+    OPTION_TERMINAL,
 } Option;
 
 enum FreeplayOption {
@@ -26,6 +26,7 @@ static char* get_option_text(Menu *menu, int option) {
         case OPTION_PLAY: return "Just play the game";
         case OPTION_FREEPLAY: return "Freeplay";
         case OPTION_MULTIPLIERS: return "Highest multipliers";
+        case OPTION_TERMINAL: return "The Bird Terminal 1999";
         }
     case MENU_STATE_FREEPLAY:
         switch (option) {
@@ -48,6 +49,7 @@ static char *get_description_text(Menu *menu) {
         case OPTION_PLAY: return "Just play the game";
         case OPTION_FREEPLAY: return "Freeplay";
         case OPTION_MULTIPLIERS: return "Highest multipliers";
+        case OPTION_TERMINAL: return "Manually handle the bird computer";
         }
     case MENU_STATE_FREEPLAY:
         switch (menu->option_idx) {
@@ -67,11 +69,7 @@ static void draw_description(Menu *menu) {
     Vector2 origin = { dimensions.x / 2, dimensions.y / 2 };
     Vector2 position = {
         .x = menu->center_x,
-        .y = menu->top +
-        menu->header_size +
-        menu->line_section_size +
-        menu->instruction_size +
-        (menu->description_size / 2)
+        .y = menu->inner_rectangle.y + menu->line_section_size + menu->instruction_size + (menu->description_size / 2)
     };
     DrawTextPro(menu->font, text, position, origin, 0.0f, menu->font_size, 0.0f, MENU_OPTION_COLOR);
 }
@@ -107,40 +105,35 @@ static Vector2 get_option_pivot(Menu *menu, int option_idx) {
     if (option_idx < half_options) {
         // option is in the column to the left
         return (Vector2) {
-            .x = menu->left + (menu->width * 0.1f),
-            .y = menu->top + menu->header_size + (menu->line_size * option_idx)
+            .x = menu->inner_rectangle.x + (menu->inner_rectangle.width * 0.1f),
+            .y = menu->inner_rectangle.y + (menu->line_size * option_idx)
         };
     }
 
     // option is in the column to the right
     return (Vector2) {
-        .x = menu->center_x + (menu->width * 0.1f),
-        .y = menu->top + menu->header_size + (menu->line_size * (option_idx - half_options))
+        .x = menu->center_x + (menu->inner_rectangle.width * 0.1f),
+        .y = menu->inner_rectangle.y + (menu->line_size * (option_idx - half_options))
     };
-}
-
-static void draw_text(Menu *menu, char *text, Vector2 position, Color color) {
-    Vector2 text_menu = MeasureTextEx(menu->font, text, menu->font_size, 0.0f);
-    Vector2 text_origin = { 0, -(menu->line_size / 2.0f) + (text_menu.y / 2.0f) };
-    DrawTextPro(menu->font, text, position, text_origin, 0.0f, menu->font_size, 0.0f, color);
 }
 
 static void draw_option_text(Menu *menu, int option_idx) {
     char *text = get_option_text(menu, option_idx);
     Vector2 option_pivot = get_option_pivot(menu, option_idx);
     Color color = (option_idx == menu->option_idx) ? MENU_OPTION_SELECTED_COLOR : MENU_OPTION_COLOR;
-    draw_text(menu, text, option_pivot, color);
+    Vector2 position = {option_pivot.x, option_pivot.y + (menu->line_size / 2)};
+    draw_text(menu, text, position, color);
 }
 
 static void draw_cursor(State *state, float option_idx) {
     Menu *menu = &state->menu;
 
-    const float x_fract = menu->width * 0.02f;
-    const float y_fract = menu->height * 0.03f;
+    const float x_fract = menu->inner_rectangle.width * 0.02f;
+    const float y_fract = menu->inner_rectangle.height * 0.05f;
 
 
     Vector2 option_pivot = get_option_pivot(menu, option_idx);
-    float left_padding = (menu->width * 0.05f);
+    float left_padding = (menu->inner_rectangle.width * 0.05f);
     float vertical_padding = 0.3f * y_fract;
 
     { // background
@@ -149,20 +142,17 @@ static void draw_cursor(State *state, float option_idx) {
             .y = option_pivot.y + vertical_padding
         };
         Vector2 size = {
-            .x = (menu->width / 2) - left_padding - (x_fract * 2),
+            .x = (menu->inner_rectangle.width / 2) - left_padding - (x_fract * 2),
             .y = menu->line_size - (vertical_padding * 2)
         };
         DrawRectangleV(position, size, MENU_CURSOR_BG_COLOR);
     }
 
-    char *cursor = ">";
-    Vector2 text_menu = MeasureTextEx(menu->font, cursor, menu->font_size, 0.0f);
-    Vector2 origin = { 0, -(menu->line_size / 2.0f) + (text_menu.y / 2.0f) };
     Vector2 position = {
-        .x = option_pivot.x - left_padding - x_fract,
-        .y = option_pivot.y
+        .x = menu->inner_rectangle.x + x_fract,
+        .y = option_pivot.y + (menu->line_size / 2)
     };
-    DrawTextPro(menu->font, cursor, position, origin, 0.0f, menu->font_size, 0.0f, MENU_FG_COLOR);
+    draw_text(menu, ">", position, MENU_FG_COLOR);
 }
 
 static void draw_option_cursor(State *state) {
@@ -174,25 +164,31 @@ void menu_update_dimensions(State *state) {
     Menu *menu = &state->menu;
     menu->font_size = (MENU_FONT_SIZE / menu->font.baseSize) * state->scale_multiplier * 0.8f;
 
-    menu->width = state->game_width;
-    menu->height = state->game_height * 0.8f;
+    menu->outer_rectangle = (Rectangle) {
+        state->game_left,
+        state->game_top,
+        state->game_width,
+        state->game_height
+    };
 
-    menu->left = state->game_left;
-    menu->right = menu->left + menu->width;
+    menu->center_x = menu->outer_rectangle.x + (menu->outer_rectangle.width * 0.5f);
 
-    menu->top = state->game_top + ((state->game_height - menu->height) / 2.0f);
-    menu->bottom = menu->top + menu->height;
+    menu->header_size = menu->outer_rectangle.height * 0.1f;
 
-    menu->center_x = menu->left + (menu->width * 0.5f);
-    menu->center_y = menu->top + (menu->height * 0.5f);
+    const float body_padding = menu->outer_rectangle.width * 0.02f;
+    menu->inner_rectangle = (Rectangle) {
+        menu->outer_rectangle.x + body_padding,
+        menu->outer_rectangle.y + menu->header_size,
+        menu->outer_rectangle.width - (body_padding * 2),
+        menu->outer_rectangle.height - menu->header_size - body_padding,
+    };
 
-    menu->header_size = menu->height * 0.1f;
-    menu->line_section_size = menu->height * 0.6f;
+    menu->line_section_size = menu->inner_rectangle.height * 0.7f;
     menu->line_size = menu->line_section_size / MENU_OPTION_COUNT * 2;
 
-    menu->instruction_size = menu->height * 0.15f;
-    menu->description_size = menu->height * 0.15f;
-    menu->decor_line_size = 5;
+    menu->instruction_size = menu->inner_rectangle.height * 0.15f;
+    menu->description_size = menu->inner_rectangle.height * 0.15f;
+    menu->line_thickness = state->scale_multiplier;
 }
 
 void menu_init(State *state) {
@@ -238,9 +234,15 @@ Area menu_update(State *state) {
     case MENU_STATE_DEFAULT: {
         if (activation) {
             switch (menu->option_idx) {
-            default: break;
-            case OPTION_PLAY: return AREA_FOREST;
-            case OPTION_FREEPLAY: menu->state = MENU_STATE_FREEPLAY; break;
+                default: break;
+                case OPTION_PLAY: return AREA_FOREST;
+                case OPTION_FREEPLAY: menu->state = MENU_STATE_FREEPLAY; break;
+                case OPTION_TERMINAL: {
+                    state->global_state = GLOBAL_STATE_TERMINAL_MANUAL_INPUT;
+                    // TODO: bad code
+                    terminal_setup(state);
+                    break;
+                }
             }
             menu->option_idx = 0;
         }
@@ -266,11 +268,10 @@ Area menu_update(State *state) {
 
 static void draw_instruction_text(Menu *menu) {
     const float y_fract = menu->instruction_size / 3.0f;
-    const float x_fract = (menu->width * 0.05f);
-    const Vector2 dimensions = MeasureTextEx(menu->font, "", menu->font_size, 0.0f);
+    const float x_fract = (menu->inner_rectangle.width * 0.05f);
     Vector2 position = {
-        .x = menu->left + x_fract,
-        .y = menu->top + menu->header_size + menu->line_section_size + y_fract - dimensions.y
+        .x = menu->inner_rectangle.x + x_fract,
+        .y = menu->inner_rectangle.y + menu->line_section_size + y_fract
     };
 
     draw_text(menu, "ESC    : Quit", position, MENU_FG_COLOR);
@@ -291,31 +292,34 @@ static void draw_instruction_text(Menu *menu) {
 static void draw_default_menu_background(State *state) {
     Menu *menu = &state->menu;
 
-    DrawRectangle(menu->left, menu->top, menu->width, menu->height, MENU_BG_COLOR);
-    char *header = "The Bird Computer - Floppyright (F) 1999-2005 BirdTech Systems";
+    DrawRectangleRec(menu->outer_rectangle, MENU_BG_COLOR);
+
+    char *header = "Bird Computer - Sloppyright (S) 1999-2005 Deathbird Systems";
     Vector2 header_menu = MeasureTextEx(menu->font, header, menu->font_size, 0.0f);
     Vector2 header_origin = { (header_menu.x / 2.0f), (header_menu.y / 2.0f) };
     Vector2 header_position = {
         .x = menu->center_x,
-        .y = menu->top + (menu->header_size / 2.0f)
+        .y = menu->outer_rectangle.y + (menu->header_size / 2.0f)
     };
     DrawTextPro(menu->font, header, header_position, header_origin, 0.0f, menu->font_size, 0.0f, MENU_FG_COLOR);
+
+    DrawRectangleLinesEx(menu->inner_rectangle, menu->line_thickness, MENU_FG_COLOR);
+
     { // foreground lines
-        float line_thickness = state->scale_multiplier;
-        Vector2 start = {menu->left, menu->top + menu->header_size};
-        Vector2 end = {menu->right, start.y};
-        DrawLineEx(start, end, line_thickness, MENU_FG_COLOR);
+        Vector2 start = {menu->inner_rectangle.x, menu->inner_rectangle.y};
+        Vector2 end = {menu->inner_rectangle.x + menu->inner_rectangle.width, start.y};
+        DrawLineEx(start, end, menu->line_thickness, MENU_FG_COLOR);
         start.x = menu->center_x;
         end.x = start.x;
         end.y = start.y + menu->line_section_size;
-        DrawLineEx(start, end, line_thickness, MENU_FG_COLOR);
+        DrawLineEx(start, end, menu->line_thickness, MENU_FG_COLOR);
         start.y = end.y;
-        start.x = menu->left;
-        end.x = menu->right;
-        DrawLineEx(start, end, line_thickness, MENU_FG_COLOR);
+        start.x = menu->inner_rectangle.x;
+        end.x = menu->inner_rectangle.x + menu->inner_rectangle.width;
+        DrawLineEx(start, end, menu->line_thickness, MENU_FG_COLOR);
         start.y += menu->instruction_size;
         end.y += menu->instruction_size;
-        DrawLineEx(start, end, line_thickness, MENU_FG_COLOR);
+        DrawLineEx(start, end, menu->line_thickness, MENU_FG_COLOR);
     }
 
     draw_instruction_text(menu);
@@ -338,8 +342,8 @@ void menu_render(State *state) {
         Vector2 text_menu = MeasureTextEx(menu->font, text, menu->font_size, 0.0f);
         Vector2 origin = {0};
         Vector2 position = {
-            .x = menu->left - (text_menu.x / 2),
-            .y = menu->top - (text_menu.y / 2)
+            .x = menu->outer_rectangle.x - (text_menu.x / 2),
+            .y = menu->outer_rectangle.y - (text_menu.y / 2)
         };
         DrawTextPro(menu->font, text, position, origin, 0.0f, menu->font_size, 0.0f, WHITE);
     } break;

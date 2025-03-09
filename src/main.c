@@ -7,6 +7,7 @@
 #include "level.c"
 #include "player.c"
 #include "bird.c"
+#include "terminal.c"
 #include "menu.c"
 #include "fader.c"
 #include "portal.c"
@@ -182,6 +183,7 @@ int main(void) {
         player_init(&state->player);
         player_level_setup(state);
         birds_init(state);
+        terminal_reset(&state->terminal);
         menu_init(state);
         menu_level_setup(state);
         cartoon_transition_init(state);
@@ -231,10 +233,25 @@ int main(void) {
         }
 
         switch (state->global_state) {
+        case GLOBAL_STATE_TERMINAL_MENU_STARTUP: {
+            if (terminal_update(state)) {
+                state->global_state = GLOBAL_STATE_MENU;
+            }
+        } break;
+        case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
+            if (terminal_update(state)) {
+                state->global_state = GLOBAL_STATE_MENU;
+            }
+        } break;
         case GLOBAL_STATE_MENU: {
             int area = menu_update(state);
             if (area != AREA_NONE) {
                 travel_to_area(state, area);
+                state->global_state = GLOBAL_STATE_GAME;
+            }
+        } break;
+        case GLOBAL_STATE_TERMINAL_GAME_STARTUP: {
+            if (terminal_update(state)) {
                 state->global_state = GLOBAL_STATE_GAME;
             }
         } break;
@@ -287,6 +304,11 @@ int main(void) {
         ClearBackground(GAME_OUT_OF_BOUNDS_COLOR);
 
         switch (state->global_state) {
+        case GLOBAL_STATE_TERMINAL_MENU_STARTUP:
+        case GLOBAL_STATE_TERMINAL_GAME_STARTUP:
+        case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
+            terminal_render(state);
+        } break;
         case GLOBAL_STATE_MENU: {
             menu_render(state);
         } break;
@@ -336,3 +358,4 @@ int main(void) {
 
     return 0;
 }
+

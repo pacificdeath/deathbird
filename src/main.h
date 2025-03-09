@@ -35,6 +35,11 @@
 #define BIRD_DEATH_PARTS (BIRD_DEATH_BODY_PARTS + BIRD_DEATH_GORE_PARTS)
 #define BIRD_Y_SECTIONS 7
 
+#define TERMINAL_LINE_CAPACITY 32
+#define TERMINAL_LINE_MAX_LENGTH 64
+#define TERMINAL_BG_COLOR ((Color){0,0,0,255})
+#define TERMINAL_FG_COLOR ((Color){255,255,0,255})
+
 #define MENU_FONT "bios.ttf"
 #define MENU_FONT_SIZE 250
 #define MENU_BG_COLOR ((Color) { 0, 0, 192, 255 })
@@ -163,7 +168,10 @@ typedef enum Portal_Bits {
 } Portal_Bits;
 
 typedef enum Global_State {
-    GLOBAL_STATE_MENU = 0,
+    GLOBAL_STATE_TERMINAL_MENU_STARTUP,
+    GLOBAL_STATE_TERMINAL_GAME_STARTUP,
+    GLOBAL_STATE_TERMINAL_MANUAL_INPUT,
+    GLOBAL_STATE_MENU,
     GLOBAL_STATE_FADE_OUT,
     GLOBAL_STATE_FADE_IN,
     GLOBAL_STATE_PRE_GAME_PORTAL_APPEAR,
@@ -281,15 +289,19 @@ typedef struct Texture_Scroller {
     uint8 opacity;
 } Texture_Scroller;
 
+
+
+typedef struct Terminal {
+    char lines[TERMINAL_LINE_CAPACITY][TERMINAL_LINE_MAX_LENGTH];
+    int current_line;
+    int current_char;
+    float process_timer;
+} Terminal;
+
 typedef struct Menu {
-    uint16 width;
-    uint16 height;
-    uint16 left;
-    uint16 right;
-    uint16 top;
-    uint16 bottom;
+    Rectangle outer_rectangle;
+    Rectangle inner_rectangle;
     uint16 center_x;
-    uint16 center_y;
 
     float font_size;
     float header_size;
@@ -297,7 +309,7 @@ typedef struct Menu {
     float line_size;
     float instruction_size;
     float description_size;
-    float decor_line_size;
+    float line_thickness;
 
     Menu_State state;
     Font font;
@@ -388,6 +400,8 @@ typedef struct State {
 
     Level current_level;
 
+    Terminal terminal;
+
     Menu menu;
 
     Player player;
@@ -448,5 +462,13 @@ float portal_distance_to_center_ratio(State *state, Vector2 position);
 bool portal_inhale_object(float *obj_position, float obj_step, float portal_position);
 
 Bird_Hit bird_try_destroy_by_player(State *state, Bird *bird);
+
+void terminal_setup(State *state); // TODO: bad code
+
+inline static void draw_text(Menu *menu, char *text, Vector2 position, Color color) {
+    Vector2 dimensions = MeasureTextEx(menu->font, text, menu->font_size, 0.0f);
+    Vector2 origin = { 0, (dimensions.y / 2) };
+    DrawTextPro(menu->font, text, position, origin, 0.0f, menu->font_size, 0.0f, color);
+}
 
 #endif
