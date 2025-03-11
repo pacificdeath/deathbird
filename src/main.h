@@ -39,7 +39,7 @@
 #define TERMINAL_LINE_MAX_LENGTH 64
 #define TERMINAL_BG_COLOR ((Color){0,0,0,255})
 #define TERMINAL_FG_COLOR ((Color){255,255,255,255})
-#define TERMINAL_FUZZY_COLOR ((Color){0,128,0,255})
+#define TERMINAL_FUZZY_COLOR ((Color){0,128,128,255})
 
 #define MENU_FONT "bios.ttf"
 #define MENU_FONT_SIZE 250
@@ -311,7 +311,7 @@ typedef struct Terminal {
     float process_timer;
     int process_step;
     Command commands[COMMAND_TOTAL];
-    char fuzzy[];
+    char fuzzy[TERMINAL_LINE_MAX_LENGTH];
 } Terminal;
 
 typedef struct Menu {

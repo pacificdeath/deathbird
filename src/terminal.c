@@ -258,6 +258,15 @@ bool terminal_update(State *state) {
                 }
             }
 
+            if (IsKeyPressed(KEY_TAB)) {
+                int i;
+                for (i = terminal->current_char; !is_whitespace(terminal->fuzzy[i]); i++) {
+                    line[i] = terminal->fuzzy[i];
+                }
+                line[i] = '\0';
+                terminal->current_char = i;
+            }
+
             break;
         }
     };
