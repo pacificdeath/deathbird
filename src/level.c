@@ -1,210 +1,206 @@
-#include <stdio.h>
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 #define MIN_BIRD_FREQUENCY 0.05f
-#define MAX_BIRD_FREQUENCY 0.1f
+#define MAX_BIRD_FREQUENCY 0.2f
 #define LEVELS_BEFORE_MIN_FREQUENCY 31
 #define LEVEL_IDX_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
 #define LEVEL_IDX_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 #define MULTIPLIER_TEXT_BG_COLOR ((Color) { 255, 0, 0, 255 })
 #define MULTIPLIER_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 
-static Vector2 scroll_tex_size() {
+static Vector2 scroll_sprite_size() {
     return (Vector2) {
         .x = 2.0f / GAME_WIDTH_RATIO,
         .y = 2.0f / GAME_HEIGHT_RATIO
     };
 }
 
-static Vector2 scroll_tex_offset(Vector2 tex_size) {
+static Vector2 scroll_sprite_offset(Vector2 sprite_size) {
     return (Vector2) {
-        .x = -(tex_size.x),
-        .y = -(tex_size.y / 2)
+        .x = -1 + (sprite_size.x / 2),
+        .y = -1 + (sprite_size.y / 2)
     };
 }
 
-static int setup_texture_scrollers_for_current_level(State *state) {
-    Texture_Scroller *tex_scrollers = state->tex_scrollers;
-    int texture_scroller_amount = 0;
+static int setup_sprite_scrollers_for_current_level(State *state) {
+    SpriteScroller *sprite_scrollers = state->sprite_scrollers;
+    int sprite_scroller_amount = 0;
     switch (state->area) {
     default: break;
     case AREA_FOREST: {
-        tex_scrollers[0].tex = TEX_AREA_NIGHT_SKY;
-        tex_scrollers[0].horizontal_textures = 4;
-        tex_scrollers[0].horizontal_speed = -0.03f;
-        tex_scrollers[0].vertical_textures = 2;
-        tex_scrollers[0].vertical_speed = 0.0f;
-        tex_scrollers[0].opacity = 255;
+        sprite_scrollers[0].sprite = SPRITE_NIGHT_SKY;
+        sprite_scrollers[0].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[0].horizontal_speed = -0.01f;
+        sprite_scrollers[0].vertical_sprites = GAME_HEIGHT_RATIO;
+        sprite_scrollers[0].vertical_speed = 0.0f;
+        sprite_scrollers[0].opacity = 255;
 
-        tex_scrollers[1].tex = TEX_AREA_OCEAN,
-        tex_scrollers[1].horizontal_textures = 4,
-        tex_scrollers[1].horizontal_speed = 0.03f,
-        tex_scrollers[1].vertical_textures = 1,
-        tex_scrollers[1].vertical_speed = 0.0f;
-        tex_scrollers[1].opacity = 255;
+        sprite_scrollers[1].sprite = SPRITE_OCEAN,
+        sprite_scrollers[1].horizontal_sprites = GAME_WIDTH_RATIO + 1,
+        sprite_scrollers[1].horizontal_speed = 0.01f,
+        sprite_scrollers[1].vertical_sprites = 1,
+        sprite_scrollers[1].vertical_speed = 0.0f;
+        sprite_scrollers[1].opacity = 255;
 
-        tex_scrollers[2].tex = TEX_AREA_HILLS;
-        tex_scrollers[2].horizontal_textures = 4;
-        tex_scrollers[2].horizontal_speed = 0.15f;
-        tex_scrollers[2].vertical_textures = 1;
-        tex_scrollers[2].vertical_speed = 0.0f;
-        tex_scrollers[2].opacity = 255;
+        sprite_scrollers[2].sprite = SPRITE_HILLS;
+        sprite_scrollers[2].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[2].horizontal_speed = 0.05f;
+        sprite_scrollers[2].vertical_sprites = 1;
+        sprite_scrollers[2].vertical_speed = 0.0f;
+        sprite_scrollers[2].opacity = 255;
 
-        tex_scrollers[3].tex = TEX_AREA_TREES;
-        tex_scrollers[3].horizontal_textures = 4;
-        tex_scrollers[3].horizontal_speed = 0.75f;
-        tex_scrollers[3].vertical_textures = 1;
-        tex_scrollers[3].vertical_speed = 0.0f;
-        tex_scrollers[3].opacity = 255;
+        sprite_scrollers[3].sprite = SPRITE_TREES;
+        sprite_scrollers[3].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[3].horizontal_speed = 0.25f;
+        sprite_scrollers[3].vertical_sprites = 1;
+        sprite_scrollers[3].vertical_speed = 0.0f;
+        sprite_scrollers[3].opacity = 255;
 
-        texture_scroller_amount = 4;
+        sprite_scroller_amount = 4;
     } break;
     case AREA_MEADOWS: {
-        tex_scrollers[0].tex = TEX_AREA_DAY_SKY;
-        tex_scrollers[0].horizontal_textures = 4;
-        tex_scrollers[0].horizontal_speed = -0.03f;
-        tex_scrollers[0].vertical_textures = 2;
-        tex_scrollers[0].vertical_speed = 0.0f;
-        tex_scrollers[0].opacity = 255;
+        sprite_scrollers[0].sprite = SPRITE_DAY_SKY;
+        sprite_scrollers[0].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[0].horizontal_speed = -0.03f;
+        sprite_scrollers[0].vertical_sprites = GAME_HEIGHT_RATIO;
+        sprite_scrollers[0].vertical_speed = 0.0f;
+        sprite_scrollers[0].opacity = 255;
 
-        tex_scrollers[1].tex = TEX_AREA_CLOUDS;
-        tex_scrollers[1].horizontal_textures = 4;
-        tex_scrollers[1].horizontal_speed = 0.03f;
-        tex_scrollers[1].vertical_textures = 1;
-        tex_scrollers[1].vertical_speed = 0.0f;
-        tex_scrollers[1].opacity = 255;
+        sprite_scrollers[1].sprite = SPRITE_CLOUDS;
+        sprite_scrollers[1].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[1].horizontal_speed = 0.03f;
+        sprite_scrollers[1].vertical_sprites = 1;
+        sprite_scrollers[1].vertical_speed = 0.0f;
+        sprite_scrollers[1].opacity = 255;
 
-        tex_scrollers[2].tex = TEX_AREA_MEADOWS;
-        tex_scrollers[2].horizontal_textures = 4;
-        tex_scrollers[2].horizontal_speed = 0.15f;
-        tex_scrollers[2].vertical_textures = 1;
-        tex_scrollers[2].vertical_speed = 0.0f;
-        tex_scrollers[2].opacity = 255;
+        sprite_scrollers[2].sprite = SPRITE_MEADOWS;
+        sprite_scrollers[2].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[2].horizontal_speed = 0.15f;
+        sprite_scrollers[2].vertical_sprites = 1;
+        sprite_scrollers[2].vertical_speed = 0.0f;
+        sprite_scrollers[2].opacity = 255;
 
-        tex_scrollers[3].tex = TEX_AREA_FENCE;
-        tex_scrollers[3].horizontal_textures = 4;
-        tex_scrollers[3].horizontal_speed = 0.75f;
-        tex_scrollers[3].vertical_textures = 1;
-        tex_scrollers[3].vertical_speed = 0.0f;
-        tex_scrollers[3].opacity = 255;
+        sprite_scrollers[3].sprite = SPRITE_FENCE;
+        sprite_scrollers[3].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[3].horizontal_speed = 0.75f;
+        sprite_scrollers[3].vertical_sprites = 1;
+        sprite_scrollers[3].vertical_speed = 0.0f;
+        sprite_scrollers[3].opacity = 255;
 
-        texture_scroller_amount = 4;
+        sprite_scroller_amount = 4;
     } break;
     case AREA_MOUNTAINS: {
-        tex_scrollers[0].tex = TEX_AREA_WINTER_SKY;
-        tex_scrollers[0].horizontal_textures = 4;
-        tex_scrollers[0].horizontal_speed = -0.03f;
-        tex_scrollers[0].vertical_textures = 2;
-        tex_scrollers[0].vertical_speed = 0.0f;
-        tex_scrollers[0].opacity = 255;
+        sprite_scrollers[0].sprite = SPRITE_WINTER_SKY;
+        sprite_scrollers[0].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[0].horizontal_speed = -0.03f;
+        sprite_scrollers[0].vertical_sprites = GAME_HEIGHT_RATIO;
+        sprite_scrollers[0].vertical_speed = 0.0f;
+        sprite_scrollers[0].opacity = 255;
 
-        tex_scrollers[1].tex = TEX_AREA_MOUNTAINS;
-        tex_scrollers[1].horizontal_textures = 4;
-        tex_scrollers[1].horizontal_speed = 0.03f;
-        tex_scrollers[1].vertical_textures = 1;
-        tex_scrollers[1].vertical_speed = 0.0f;
-        tex_scrollers[1].opacity = 255;
+        sprite_scrollers[1].sprite = SPRITE_MOUNTAINS;
+        sprite_scrollers[1].horizontal_sprites = 4;
+        sprite_scrollers[1].horizontal_speed = 0.03f;
+        sprite_scrollers[1].vertical_sprites = 1;
+        sprite_scrollers[1].vertical_speed = 0.0f;
+        sprite_scrollers[1].opacity = 255;
 
-        tex_scrollers[2].tex = TEX_AREA_WINTER_HILLS;
-        tex_scrollers[2].horizontal_textures = 4;
-        tex_scrollers[2].horizontal_speed = 0.15f;
-        tex_scrollers[2].vertical_textures = 1;
-        tex_scrollers[2].vertical_speed = 0.0f;
-        tex_scrollers[2].opacity = 255;
+        sprite_scrollers[2].sprite = SPRITE_WINTER_HILLS;
+        sprite_scrollers[2].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[2].horizontal_speed = 0.15f;
+        sprite_scrollers[2].vertical_sprites = 1;
+        sprite_scrollers[2].vertical_speed = 0.0f;
+        sprite_scrollers[2].opacity = 255;
 
-        tex_scrollers[3].tex = TEX_AREA_WINTER_TREES;
-        tex_scrollers[3].horizontal_textures = 4;
-        tex_scrollers[3].horizontal_speed = 0.75f;
-        tex_scrollers[3].vertical_textures = 1;
-        tex_scrollers[3].vertical_speed = 0.0f;
-        tex_scrollers[3].opacity = 255;
+        sprite_scrollers[3].sprite = SPRITE_WINTER_TREES;
+        sprite_scrollers[3].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[3].horizontal_speed = 0.75f;
+        sprite_scrollers[3].vertical_sprites = 1;
+        sprite_scrollers[3].vertical_speed = 0.0f;
+        sprite_scrollers[3].opacity = 255;
 
-        tex_scrollers[4].tex = TEX_AREA_SNOW;
-        tex_scrollers[4].horizontal_textures = 4;
-        tex_scrollers[4].horizontal_speed = -0.45f;
-        tex_scrollers[4].vertical_textures = 3;
-        tex_scrollers[4].vertical_speed = -0.75f;
-        tex_scrollers[4].opacity = 192;
+        sprite_scrollers[4].sprite = SPRITE_SNOW;
+        sprite_scrollers[4].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[4].horizontal_speed = -0.45f;
+        sprite_scrollers[4].vertical_sprites = GAME_HEIGHT_RATIO + 1;
+        sprite_scrollers[4].vertical_speed = -0.75f;
+        sprite_scrollers[4].opacity = 192;
 
-        texture_scroller_amount = 5;
+        sprite_scroller_amount = 5;
     } break;
     case AREA_INDUSTRIAL: {
-        tex_scrollers[0].tex = TEX_AREA_GREEN_SKY;
-        tex_scrollers[0].horizontal_textures = 4;
-        tex_scrollers[0].horizontal_speed = -0.03f;
-        tex_scrollers[0].vertical_textures = 2;
-        tex_scrollers[0].vertical_speed = 0.0f;
-        tex_scrollers[0].opacity = 255;
+        sprite_scrollers[0].sprite = SPRITE_GREEN_SKY;
+        sprite_scrollers[0].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[0].horizontal_speed = -0.03f;
+        sprite_scrollers[0].vertical_sprites = GAME_HEIGHT_RATIO;
+        sprite_scrollers[0].vertical_speed = 0.0f;
+        sprite_scrollers[0].opacity = 255;
 
-        tex_scrollers[1].tex = TEX_AREA_GREY_CLOUDS;
-        tex_scrollers[1].horizontal_textures = 4;
-        tex_scrollers[1].horizontal_speed = 0.03f;
-        tex_scrollers[1].vertical_textures = 1;
-        tex_scrollers[1].vertical_speed = 0.0f;
-        tex_scrollers[1].opacity = 255;
+        sprite_scrollers[1].sprite = SPRITE_GREY_CLOUDS;
+        sprite_scrollers[1].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[1].horizontal_speed = 0.03f;
+        sprite_scrollers[1].vertical_sprites = 1;
+        sprite_scrollers[1].vertical_speed = 0.0f;
+        sprite_scrollers[1].opacity = 255;
 
-        tex_scrollers[2].tex = TEX_AREA_INDUSTRIAL_FIELD;
-        tex_scrollers[2].horizontal_textures = 4;
-        tex_scrollers[2].horizontal_speed = 0.15f;
-        tex_scrollers[2].vertical_textures = 1;
-        tex_scrollers[2].vertical_speed = 0.0f;
-        tex_scrollers[2].opacity = 255;
+        sprite_scrollers[2].sprite = SPRITE_INDUSTRIAL_FIELD;
+        sprite_scrollers[2].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[2].horizontal_speed = 0.15f;
+        sprite_scrollers[2].vertical_sprites = 1;
+        sprite_scrollers[2].vertical_speed = 0.0f;
+        sprite_scrollers[2].opacity = 255;
 
-        tex_scrollers[3].tex = TEX_AREA_INDUSTRIAL_FENCE;
-        tex_scrollers[3].horizontal_textures = 4;
-        tex_scrollers[3].horizontal_speed = 0.75f;
-        tex_scrollers[3].vertical_textures = 1;
-        tex_scrollers[3].vertical_speed = 0.0f;
-        tex_scrollers[3].opacity = 255;
+        sprite_scrollers[3].sprite = SPRITE_INDUSTRIAL_FENCE;
+        sprite_scrollers[3].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[3].horizontal_speed = 0.75f;
+        sprite_scrollers[3].vertical_sprites = 1;
+        sprite_scrollers[3].vertical_speed = 0.0f;
+        sprite_scrollers[3].opacity = 255;
 
-        tex_scrollers[4].tex = TEX_AREA_RAIN;
-        tex_scrollers[4].horizontal_textures = 3;
-        tex_scrollers[4].horizontal_speed = 0.0f;
-        tex_scrollers[4].vertical_textures = 3;
-        tex_scrollers[4].vertical_speed = -2.0f;
-        tex_scrollers[4].opacity = 64;
+        sprite_scrollers[4].sprite = SPRITE_RAIN;
+        sprite_scrollers[4].horizontal_sprites = GAME_WIDTH_RATIO;
+        sprite_scrollers[4].horizontal_speed = 0.0f;
+        sprite_scrollers[4].vertical_sprites = GAME_HEIGHT_RATIO + 1;
+        sprite_scrollers[4].vertical_speed = -2.0f;
+        sprite_scrollers[4].opacity = 64;
 
-        texture_scroller_amount = 5;
+        sprite_scroller_amount = 5;
     } break;
     case AREA_CASTLE: {
-        tex_scrollers[0].tex = TEX_AREA_CASTLE_SKY;
-        tex_scrollers[0].horizontal_textures = 4;
-        tex_scrollers[0].horizontal_speed = -0.03f;
-        tex_scrollers[0].vertical_textures = 2;
-        tex_scrollers[0].vertical_speed = 0.0f;
-        tex_scrollers[0].opacity = 255;
+        sprite_scrollers[0].sprite = SPRITE_CASTLE_SKY;
+        sprite_scrollers[0].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[0].horizontal_speed = -0.03f;
+        sprite_scrollers[0].vertical_sprites = GAME_HEIGHT_RATIO;
+        sprite_scrollers[0].vertical_speed = 0.0f;
+        sprite_scrollers[0].opacity = 255;
 
-        tex_scrollers[1].tex = TEX_AREA_CASTLE_MOUNTAIN;
-        tex_scrollers[1].horizontal_textures = 4;
-        tex_scrollers[1].horizontal_speed = 0.03f;
-        tex_scrollers[1].vertical_textures = 1;
-        tex_scrollers[1].vertical_speed = 0.0f;
-        tex_scrollers[1].opacity = 255;
+        sprite_scrollers[1].sprite = SPRITE_CASTLE_MOUNTAINS;
+        sprite_scrollers[1].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[1].horizontal_speed = 0.03f;
+        sprite_scrollers[1].vertical_sprites = 1;
+        sprite_scrollers[1].vertical_speed = 0.0f;
+        sprite_scrollers[1].opacity = 255;
 
-        tex_scrollers[2].tex = TEX_AREA_CASTLE_SILHOUETTES;
-        tex_scrollers[2].horizontal_textures = 4;
-        tex_scrollers[2].horizontal_speed = 0.15f;
-        tex_scrollers[2].vertical_textures = 1;
-        tex_scrollers[2].vertical_speed = 0.0f;
-        tex_scrollers[2].opacity = 255;
+        sprite_scrollers[2].sprite = SPRITE_CASTLE_SILHOUETTES;
+        sprite_scrollers[2].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[2].horizontal_speed = 0.15f;
+        sprite_scrollers[2].vertical_sprites = 1;
+        sprite_scrollers[2].vertical_speed = 0.0f;
+        sprite_scrollers[2].opacity = 255;
 
-        tex_scrollers[3].tex = TEX_AREA_CASTLE_BRICKS;
-        tex_scrollers[3].horizontal_textures = 4;
-        tex_scrollers[3].horizontal_speed = 0.75f;
-        tex_scrollers[3].vertical_textures = 1;
-        tex_scrollers[3].vertical_speed = 0.0f;
-        tex_scrollers[3].opacity = 255;
+        sprite_scrollers[3].sprite = SPRITE_CASTLE_BRICKS;
+        sprite_scrollers[3].horizontal_sprites = GAME_WIDTH_RATIO + 1;
+        sprite_scrollers[3].horizontal_speed = 0.75f;
+        sprite_scrollers[3].vertical_sprites = 1;
+        sprite_scrollers[3].vertical_speed = 0.0f;
+        sprite_scrollers[3].opacity = 255;
 
-        texture_scroller_amount = 4;
+        sprite_scroller_amount = 4;
     } break;
     }
-    for (int i = 0; i < texture_scroller_amount; i++) {
-        ASSERT(i < TEXTURE_SCROLLER_CAP);
-        tex_scrollers[i].scroll.x = 0.0f;
-        tex_scrollers[i].scroll.y = 0.0f;
+    for (int i = 0; i < sprite_scroller_amount; i++) {
+        ASSERT(i < SPRITE_SCROLLER_CAP);
+        sprite_scrollers[i].scroll.x = 0.0f;
+        sprite_scrollers[i].scroll.y = 0.0f;
     }
-    return texture_scroller_amount;
+    return sprite_scroller_amount;
 }
 
 static Level generate_level_data(State *state) {
@@ -217,7 +213,7 @@ static Level generate_level_data(State *state) {
         float bird_frequency_loss_per_level = min_max_frequency_diff / LEVELS_BEFORE_MIN_FREQUENCY;
         float bird_frequency_loss = bird_frequency_loss_per_level * state->level_idx;
         level.bird_frequency = MAX_BIRD_FREQUENCY - bird_frequency_loss;
-        level.required_fuel = 2 + (state->level_idx * 5);
+        level.required_fuel = 20 + (state->level_idx * 5);
     }
 
     return level;
@@ -226,30 +222,30 @@ static Level generate_level_data(State *state) {
 void level_load_0(State *state) {
     state->level_idx = 0;
     state->current_level = generate_level_data(state);
-    state->current_level.tex_scroller_amount = setup_texture_scrollers_for_current_level(state);
+    state->current_level.sprite_scroller_amount = setup_sprite_scrollers_for_current_level(state);
 }
 
 void level_load_next(State *state) {
     state->level_idx++;
     state->current_level = generate_level_data(state);
-    state->current_level.tex_scroller_amount = setup_texture_scrollers_for_current_level(state);
+    state->current_level.sprite_scroller_amount = setup_sprite_scrollers_for_current_level(state);
 }
 
 void level_update(State *state) {
-    Texture_Scroller *tex_scrollers = state->tex_scrollers;
-    Vector2 tex_size = scroll_tex_size();
-    for (int i = 0; i < state->current_level.tex_scroller_amount; i++) {
-        tex_scrollers[i].scroll.x += (tex_scrollers[i].horizontal_speed * state->delta_time);
-        if (tex_scrollers[i].horizontal_speed > 0.0f && tex_scrollers[i].scroll.x > 0.0f) {
-            tex_scrollers[i].scroll.x -= tex_size.x;
-        } else if (tex_scrollers[i].horizontal_speed < 0.0f && tex_scrollers[i].scroll.x < -tex_size.x) {
-            tex_scrollers[i].scroll.x += tex_size.x;
+    SpriteScroller *sprite_scrollers = state->sprite_scrollers;
+    Vector2 sprite_size = scroll_sprite_size();
+    for (int i = 0; i < state->current_level.sprite_scroller_amount; i++) {
+        sprite_scrollers[i].scroll.x += (sprite_scrollers[i].horizontal_speed * state->delta_time);
+        if (sprite_scrollers[i].horizontal_speed > 0.0f && sprite_scrollers[i].scroll.x > 0.0f) {
+            sprite_scrollers[i].scroll.x -= sprite_size.x;
+        } else if (sprite_scrollers[i].horizontal_speed < 0.0f && sprite_scrollers[i].scroll.x < -sprite_size.x) {
+            sprite_scrollers[i].scroll.x += sprite_size.x;
         }
-        tex_scrollers[i].scroll.y += (tex_scrollers[i].vertical_speed * state->delta_time);
-        if (tex_scrollers[i].vertical_speed > 0.0f && tex_scrollers[i].scroll.y > 0.0f) {
-            tex_scrollers[i].scroll.y -= tex_size.y;
-        } else if (tex_scrollers[i].vertical_speed < 0.0f && tex_scrollers[i].scroll.y < -tex_size.y) {
-            tex_scrollers[i].scroll.y += tex_size.y;
+        sprite_scrollers[i].scroll.y += (sprite_scrollers[i].vertical_speed * state->delta_time);
+        if (sprite_scrollers[i].vertical_speed > 0.0f && sprite_scrollers[i].scroll.y > 0.0f) {
+            sprite_scrollers[i].scroll.y -= sprite_size.y;
+        } else if (sprite_scrollers[i].vertical_speed < 0.0f && sprite_scrollers[i].scroll.y < -sprite_size.y) {
+            sprite_scrollers[i].scroll.y += sprite_size.y;
         }
     }
 }
@@ -275,18 +271,18 @@ Vector2 text_box(State *state, const char *buffer, Vector2 position, Color bg_co
 }
 
 void level_render(State *state) {
-    Texture_Scroller *tex_scrollers = state->tex_scrollers;
-    Vector2 tex_size = scroll_tex_size();
-    Vector2 tex_offset = scroll_tex_offset(tex_size);
-    for (int i = 0; i < state->current_level.tex_scroller_amount; i++) {
-        for (int x = 0; x < tex_scrollers[i].horizontal_textures; x++) {
-            for (int y = 0; y < tex_scrollers[i].vertical_textures; y++) {
+    SpriteScroller *sprite_scrollers = state->sprite_scrollers;
+    Vector2 sprite_size = scroll_sprite_size();
+    Vector2 sprite_offset = scroll_sprite_offset(sprite_size);
+    for (int i = 0; i < state->current_level.sprite_scroller_amount; i++) {
+        for (int x = 0; x < sprite_scrollers[i].horizontal_sprites; x++) {
+            for (int y = 0; y < sprite_scrollers[i].vertical_sprites; y++) {
                 Vector2 position = {
-                    tex_offset.x + tex_scrollers[i].scroll.x + (tex_size.x * x),
-                    tex_offset.y + tex_scrollers[i].scroll.y + (tex_size.y * y)
+                    sprite_offset.x + sprite_scrollers[i].scroll.x + (sprite_size.x * x),
+                    sprite_offset.y + sprite_scrollers[i].scroll.y + (sprite_size.y * y)
                 };
-                Color color = {255,255,255,tex_scrollers[i].opacity};
-                atlas_draw(state, tex_scrollers[i].tex, position, 0.0f, 1.01f, color);
+                Color color = {255,255,255,sprite_scrollers[i].opacity};
+                atlas_draw(state, sprite_scrollers[i].sprite, position, 0.0f, 1.01f, color);
             }
         }
     }

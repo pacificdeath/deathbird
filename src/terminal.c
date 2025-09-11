@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 #define TERMINAL_LINE_START 4
 
 inline static bool is_whitespace(char c) {
@@ -15,22 +12,6 @@ inline static int find_next_non_whitespace(char *string, int idx) {
         return -1;
     }
     return idx;
-}
-
-char *terminal_get_menu_startup_text(int step) {
-    switch (step) {
-        case 0: return ">>> initializing bird computer...";
-        case 1: return ">>> scanning for suitable bird kernels...";
-        case 2: return ">>> suitable kernel found: BIRDCORE v:1999.41 [UNSTABLE]";
-        case 3: return ">>> loading BIRDCORE v:1999.41...";
-        case 4: return ">>> bootstrapping bird computer control utility...";
-        case 5: return ">>> executing bird-check...";
-        case 6: return ">>> WARNING: 103573 corrupted files found";
-        case 7: return ">>> attempting automatic recovery...";
-        case 8: return ">>> automatic recovery status: [FAILED]...";
-        case 9: return ">>> system status: BARELY_OPERATIONAL";
-        default: return NULL;
-    }
 }
 
 static void terminal_new_line(Terminal *terminal) {
@@ -57,16 +38,14 @@ static void terminal_output_line(Terminal *terminal, char *text) {
 inline static void terminal_reset(Terminal *terminal) {
     terminal->current_line = -1;
     terminal_new_line(terminal);
-    terminal->process_timer = 0.0f;
-    terminal->process_step = 0;
 }
 
 void terminal_update_dimensions(State *state) {
     Terminal *terminal = &state->terminal;
     const int padding = state->game_width * 0.01f;
     terminal->rectangle = (Rectangle) {
-        padding,
-        padding,
+        state->game_left + padding,
+        state->game_top + padding,
         state->game_width - (padding * 2),
         state->game_height - (padding * 2),
     };
@@ -110,7 +89,27 @@ static Command *try_get_command(Terminal *terminal, char *text) {
 }
 
 static void command_play(void *data) {
-    TraceLog(LOG_ERROR, "X40");
+    State *state = (State *)data;
+}
+static void command_menu(void *data) {
+    State *state = (State *)data;
+    state->global_state = GLOBAL_STATE_MENU;
+}
+static void command_game(void *data) {
+    State *state = (State *)data;
+    state->global_state = GLOBAL_STATE_GAME;
+}
+static void command_toggle_collision_bounds(void *data) {
+    State *state = (State *)data;
+    if (has_flag(state->bird_flags, BIRD_FLAG_SHOW_COLLISION_BOUNDS)) {
+        state->bird_flags &= ~BIRD_FLAG_SHOW_COLLISION_BOUNDS;
+    } else {
+        state->bird_flags |= BIRD_FLAG_SHOW_COLLISION_BOUNDS;
+    }
+}
+static void command_bossbattle(void *data) {
+    State *state = (State *)data;
+    state->global_state = GLOBAL_STATE_BOSSBATTLE;
 }
 
 inline static void terminal_register_command(Terminal *terminal, int idx, char *name, void (*function)(void *)) {
@@ -123,39 +122,21 @@ void terminal_init(State *state) {
     terminal_update_dimensions(state);
     terminal_reset(terminal);
     terminal_register_command(terminal, COMMAND_PLAY, "play", command_play);
+    terminal_register_command(terminal, COMMAND_MENU, "menu", command_menu);
+    terminal_register_command(terminal, COMMAND_GAME, "game", command_game);
+    terminal_register_command(terminal, COMMAND_BOSSBATTLE, "bossbattle", command_bossbattle);
+    terminal_register_command(terminal, COMMAND_TOGGLECOLLISIONBOUNDS, "togglecollisionbounds", command_toggle_collision_bounds);
 }
 
 void terminal_setup(State *state) {
     Terminal *terminal = &state->terminal;
-    switch (state->global_state) {
-        default: {
-            TextCopy(terminal->lines[0], "The Bird Terminal 1999");
-            TextCopy(terminal->lines[1], "Sloppyright (S)");
-            terminal->lines[2][0] = '\0';
-            TextCopy(terminal->lines[3], "Deprecated version, install Bird Terminal 2005");
-            terminal->lines[4][0] = '\0';
-            terminal->current_line = 4;
-            terminal_new_line(terminal);
-            break;
-        }
-        case GLOBAL_STATE_TERMINAL_MENU_STARTUP:
-        case GLOBAL_STATE_TERMINAL_GAME_STARTUP: {
-            terminal_reset(terminal);
-            break;
-        }
-    }
-}
-
-static bool terminal_update_process(State *state) {
-    Terminal *terminal = &state->terminal;
-    terminal->process_timer += state->delta_time;
-    if (terminal->process_timer > 0.01f) {
-        terminal->process_timer = 0.0f;
-        if (GetRandomValue(0, 4) == 0) {
-            return true;
-        }
-    }
-    return false;
+    TextCopy(terminal->lines[0], "The Bird Terminal 1999");
+    TextCopy(terminal->lines[1], "Sloppyright (S)");
+    terminal->lines[2][0] = '\0';
+    TextCopy(terminal->lines[3], "Deprecated version, install Bird Terminal 2005");
+    terminal->lines[4][0] = '\0';
+    terminal->current_line = 4;
+    terminal_new_line(terminal);
 }
 
 inline static void terminal_add_char(Terminal *terminal, char c) {
@@ -172,25 +153,7 @@ bool terminal_update(State *state) {
     Terminal *terminal = &state->terminal;
 
     switch (state->global_state) {
-        case GLOBAL_STATE_TERMINAL_MENU_STARTUP: {
-            bool process_step_changed = terminal_update_process(state);
-            if (process_step_changed) {
-                char *text = terminal_get_menu_startup_text(terminal->process_step);
-                if (text == NULL) {
-                    terminal_reset(terminal);
-                    return true;
-                }
-                ASSERT(TextLength(text) < (TERMINAL_LINE_MAX_LENGTH - 1));
-                terminal_output_line(terminal, text);
-                terminal->process_step++;
-            }
-            break;
-        }
-        case GLOBAL_STATE_TERMINAL_GAME_STARTUP: {
-            terminal->process_timer += state->delta_time;
-            break;
-        }
-        case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
+        case GLOBAL_STATE_TERMINAL: {
             char *line = terminal->lines[terminal->current_line];
             for (int key = KEY_A; key <= KEY_Z; key++) {
                 if (IsKeyPressed(key)) {

@@ -1,6 +1,4 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
 #include "rlgl.h"
-#include "main.h"
 
 // between 0.0f and 1.0f
 static void update_smooth_disappearance(State *state) {
@@ -25,7 +23,7 @@ float portal_distance_to_center_ratio(State *state, Vector2 position) {
     return 1.0f;
 }
 
-Portal_Bits portal_area_color(Area area) {
+PortalBits portal_area_color(Area area) {
     switch (area) {
     case AREA_FOREST: {
         return PORTAL_BIT_GREEN;
@@ -62,7 +60,7 @@ void portal_cleanup(State *state) {
     UnloadShader(state->portal_shader);
 }
 
-void portal_setup(State *state, Portal_Bits bits) {
+void portal_setup(State *state, PortalBits bits) {
     state->portal_bits = bits;
     state->portal_color.r = has_flag(bits, PORTAL_BIT_RED) * 255;
     state->portal_color.g = has_flag(bits, PORTAL_BIT_GREEN) * 255;

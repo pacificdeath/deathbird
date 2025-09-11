@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 void game_over_text(State *state) {
     DrawRectangle(state->game_left, state->game_top, state->game_width, state->game_height, BLACK);
     char *text = "You are a horrible person";

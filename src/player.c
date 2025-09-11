@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 #define MAX_LEFT -0.9f
 #define MAX_RIGHT 0.9f
 #define ROTATION_SPEED_GROUND -450.0f
@@ -45,6 +42,12 @@ static void handle_input(State *state) {
 
 static void handle_score(State *state) {
     Player *player = &state->player;
+    player->lives--;
+
+    if (player->lives == 0) {
+        state->global_state = GLOBAL_STATE_GAME_OVER;
+        return;
+    }
 
     player->state = PLAYER_STATE_GROUNDED;
     int multiplier = state->bird_multiplier;
@@ -69,9 +72,10 @@ static void handle_score(State *state) {
 }
 
 void player_init(Player *p) {
-    p->vertical_speed = 1.5f;
-    p->horizontal_speed = 2.0f;
+    p->vertical_speed = 1.3f;
+    p->horizontal_speed = 1.6f;
     p->may_not_interact_with_this_bird_idx = -1;
+    p->lives = 3;
 }
 
 void player_level_setup(State *state) {
@@ -229,7 +233,7 @@ void player_update(State *state) {
         }
 
         if (was_bird_hit) {
-            Bird_Hit hit = bird_try_destroy_by_player(state, &birds[bird_hit_idx]);
+            BirdHit hit = bird_try_destroy_by_player(state, &birds[bird_hit_idx]);
 
             if (has_flag(hit, BIRD_HIT_DESTROYED)) {
                 player->may_not_interact_with_this_bird_idx = -1;
@@ -279,7 +283,7 @@ void player_update(State *state) {
         );
 
         player->rotation -= ROTATION_SPEED_PORTAL * state->delta_time;
-        
+
         if (x_fully_inhaled && y_fully_inhaled) {
             player->state = PLAYER_STATE_INSIDE_PORTAL;
         }
@@ -293,47 +297,43 @@ void player_update(State *state) {
 void player_render(State *state) {
     Player *player = &state->player;
 
+    int sprite;
+    switch (player->lives) {
+        case 1: sprite = SPRITE_PLAYER3; break;
+        case 2: sprite = SPRITE_PLAYER2; break;
+        case 3: sprite = SPRITE_PLAYER1; break;
+    }
+
     switch (player->state) {
-    default: {
-        atlas_draw(
-            state,
-            TEX_PLAYER_2,
-            player->spinner_position,
-            player->rotation,
-            1.0f,
-            OPAQUE
-        );
-    } break;
-    case PLAYER_STATE_LOST_LIFE: {
-        if (has_flag(player->flags, PLAYER_FLAG_HIDDEN)) {
+        default: {
+            atlas_draw(state, sprite, player->spinner_position, player->rotation, 1.0f, OPAQUE);
+        } break;
+        case PLAYER_STATE_LOST_LIFE: {
+            if (has_flag(player->flags, PLAYER_FLAG_HIDDEN)) {
+                break;
+            }
+            atlas_draw(state, sprite, player->spinner_position, player->rotation, 1.0f, OPAQUE);
+        } break;
+        case PLAYER_STATE_INHALED_BY_PORTAL:
+        case PLAYER_STATE_EXHALED_BY_PORTAL: {
+            float x = portal_distance_to_center_ratio(state, player->spinner_position);
+            float scale = x;
+            float c = x * 255.0f;
+            Color color = {c,c,c,255};
+            atlas_draw(state, SPRITE_PLAYER2, player->spinner_position, player->rotation, scale, color);
+        } break;
+        case PLAYER_STATE_NONE:
+        case PLAYER_STATE_INSIDE_PORTAL:
             break;
+    }
+
+    if (player->lives > 0) {
+        atlas_draw(state, SPRITE_PLAYER3, (Vector2){-1.0f,0.9f}, 0, 0.5f, OPAQUE);
+        if (player->lives > 1) {
+            atlas_draw(state, SPRITE_PLAYER2, (Vector2){-0.9f,0.9f}, 0, 0.5f, OPAQUE);
+            if (player->lives > 2) {
+                atlas_draw(state, SPRITE_PLAYER1, (Vector2){-0.8f,0.9f}, 0, 0.5f, OPAQUE);
+            }
         }
-        atlas_draw(
-            state,
-            TEX_PLAYER_2,
-            player->spinner_position,
-            player->rotation,
-            1.0f,
-            OPAQUE
-        );
-    } break;
-    case PLAYER_STATE_INHALED_BY_PORTAL:
-    case PLAYER_STATE_EXHALED_BY_PORTAL: {
-        float x = portal_distance_to_center_ratio(state, player->spinner_position);
-        float scale = x;
-        float c = x * 255.0f;
-        Color color = {c,c,c,255};
-        atlas_draw(
-            state,
-            TEX_PLAYER_2,
-            player->spinner_position,
-            player->rotation,
-            scale,
-            color
-        );
-    } break;
-    case PLAYER_STATE_NONE:
-    case PLAYER_STATE_INSIDE_PORTAL:
-        break;
     }
 }

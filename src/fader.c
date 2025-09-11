@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 #define FADER_MAX 255
 #define FADER_MIN 0
 #define FADER_SPEED 1000.0f

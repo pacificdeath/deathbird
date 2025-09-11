@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 #define CARTOON_TRANSITION_SPEED 2.0f
 #define CARTOON_TRANSITION_FULL_TRANSPARENCY 2.0f
 #define CARTOON_TRANSITION_FULL_DARKNESS 0.0f

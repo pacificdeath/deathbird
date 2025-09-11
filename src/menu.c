@@ -1,6 +1,3 @@
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
-
 enum Option {
     OPTION_RESULTS,
     OPTION_PLAY,
@@ -128,9 +125,9 @@ static void draw_option_text(Menu *menu, int option_idx) {
 static void draw_cursor(State *state, float option_idx) {
     Menu *menu = &state->menu;
 
-    const float x_fract = menu->inner_rectangle.width * 0.02f;
+    const float inner_rectangle_padding = (menu->outer_rectangle.width - menu->inner_rectangle.width) / 2;
+    const float x_fract = menu->inner_rectangle.width * 0.01f;
     const float y_fract = menu->inner_rectangle.height * 0.05f;
-
 
     Vector2 option_pivot = get_option_pivot(menu, option_idx);
     float left_padding = (menu->inner_rectangle.width * 0.05f);
@@ -142,14 +139,18 @@ static void draw_cursor(State *state, float option_idx) {
             .y = option_pivot.y + vertical_padding
         };
         Vector2 size = {
-            .x = (menu->inner_rectangle.width / 2) - left_padding - (x_fract * 2),
+            .x = (menu->inner_rectangle.width / 2) - left_padding - (x_fract * 4),
             .y = menu->line_size - (vertical_padding * 2)
         };
         DrawRectangleV(position, size, MENU_CURSOR_BG_COLOR);
     }
 
+    float horizontal_offset = option_idx >= (MENU_OPTION_COUNT / 2)
+        ? state->game_center_x
+        : inner_rectangle_padding;
+
     Vector2 position = {
-        .x = menu->inner_rectangle.x + x_fract,
+        .x = menu->inner_rectangle.x + horizontal_offset + x_fract,
         .y = option_pivot.y + (menu->line_size / 2)
     };
     draw_text(menu, ">", position, MENU_FG_COLOR);
@@ -162,7 +163,7 @@ static void draw_option_cursor(State *state) {
 
 void menu_update_dimensions(State *state) {
     Menu *menu = &state->menu;
-    menu->font_size = (MENU_FONT_SIZE / menu->font.baseSize) * state->scale_multiplier * 0.8f;
+    menu->font_size = (MENU_FONT_SIZE / menu->font.baseSize) * state->scale_multiplier * 1.2f;
 
     menu->outer_rectangle = (Rectangle) {
         state->game_left,
@@ -233,7 +234,7 @@ Area menu_update(State *state) {
     default:
     case MENU_STATE_DEFAULT: {
         if (IsKeyPressed(KEY_F10)) {
-            state->global_state = GLOBAL_STATE_TERMINAL_MANUAL_INPUT;
+            state->global_state = GLOBAL_STATE_TERMINAL;
             // TODO: bad code
             terminal_setup(state);
         }
@@ -243,7 +244,7 @@ Area menu_update(State *state) {
                 case OPTION_PLAY: return AREA_FOREST;
                 case OPTION_FREEPLAY: menu->state = MENU_STATE_FREEPLAY; break;
                 case OPTION_TERMINAL: {
-                    state->global_state = GLOBAL_STATE_TERMINAL_MANUAL_INPUT;
+                    state->global_state = GLOBAL_STATE_TERMINAL;
                     // TODO: bad code
                     terminal_setup(state);
                     break;

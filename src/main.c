@@ -1,7 +1,31 @@
+#define TEXTURE_PATH ".\\textures"
+#define ATLAS_PNG_PATH ".\\atlas\\atlas.png"
+#define ATLAS_DATA_GENERATED_H_PATH ".\\atlas\\atlas_data.generated.h"
+
+#ifdef DEBUG
+#define DEATHBIRD_LOG_LEVEL LOG_ALL
+#else
+#define DEATHBIRD_LOG_LEVEL LOG_WARNING
+#endif
+
+#ifdef ATLAS_GEN
+
+#include "atlas_generator.h"
+
+int main(void) {
+    SetTraceLogLevel(DEATHBIRD_LOG_LEVEL);
+    generate_atlas();
+    return 0;
+}
+
+#else
+
+#include "../atlas/atlas_data.generated.h"
+
+#include "main.h"
 #include <stdlib.h>
 #include <math.h>
-#include "../raylib-5.0_win64_mingw-w64/include/raylib.h"
-#include "main.h"
+#include "string_buffer.h"
 #include "text_in_blackness.c"
 #include "atlas.c"
 #include "level.c"
@@ -12,26 +36,25 @@
 #include "fader.c"
 #include "portal.c"
 #include "cartoon_transition.c"
+#include "boss.c"
 
 #define AREA_TEXTURE_SIZE 128.0f
 
-#if DEBUG
-Vector2 to_pixel_position(State *state, Vector2 game_position) {
+inline Vector2 to_pixel_position(State *state, Vector2 game_position) {
     return (Vector2) {
         state->game_left + (game_position.x + 1) / 2.0f * state->game_width,
         state->game_bottom - (game_position.y + 1) / 2.0f * state->game_height
     };
 }
 
-Vector2 to_pixel_size(State *state, Vector2 game_size) {
+inline Vector2 to_pixel_size(State *state, Vector2 game_size) {
     return (Vector2) {
         game_size.x / 2.0f * state->game_width,
         game_size.y / 2.0f * state->game_height
     };
 }
-#endif
 
-Rectangle game_rectangle(State *state) {
+inline Rectangle game_rectangle(State *state) {
     return (Rectangle) {
         .x = state->game_left,
         .y = state->game_top,
@@ -143,6 +166,7 @@ void travel_to_area(State *state, Area area) {
     player_level_setup(state);
     level_load_next(state);
     birds_prepare_shader(state, area);
+    birds_update_spawn_weights(state);
 }
 
 int main(void) {
@@ -152,13 +176,7 @@ int main(void) {
         int window_min_height = AREA_TEXTURE_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
         update_state_dimensions_window(state, window_min_width, window_min_height);
 
-        SetTraceLogLevel(
-            #if DEBUG
-            LOG_ALL
-            #else
-            LOG_WARNING
-            #endif
-        );
+        SetTraceLogLevel(DEATHBIRD_LOG_LEVEL);
         SetConfigFlags(FLAG_WINDOW_RESIZABLE);
         InitWindow(state->window_width, state->window_height, "Deathbird");
         SetWindowMinSize(window_min_width, window_min_height);
@@ -187,12 +205,13 @@ int main(void) {
         menu_init(state);
         menu_level_setup(state);
         cartoon_transition_init(state);
+        boss_init(state);
     }
     portal_setup(state, PORTAL_BIT_RED);
 
     int skip_frames = 0;
     while (!WindowShouldClose()) {
-        #if NEVER
+        #if DEBUG
             static bool atlas_debug_active = false;
             if (IsKeyPressed(KEY_A)) {
                 atlas_debug_active = !atlas_debug_active;
@@ -234,16 +253,6 @@ int main(void) {
         }
 
         switch (state->global_state) {
-        case GLOBAL_STATE_TERMINAL_MENU_STARTUP: {
-            if (terminal_update(state)) {
-                state->global_state = GLOBAL_STATE_MENU;
-            }
-        } break;
-        case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
-            if (terminal_update(state)) {
-                state->global_state = GLOBAL_STATE_MENU;
-            }
-        } break;
         case GLOBAL_STATE_MENU: {
             int area = menu_update(state);
             if (area != AREA_NONE) {
@@ -251,9 +260,9 @@ int main(void) {
                 state->global_state = GLOBAL_STATE_GAME;
             }
         } break;
-        case GLOBAL_STATE_TERMINAL_GAME_STARTUP: {
+        case GLOBAL_STATE_TERMINAL: {
             if (terminal_update(state)) {
-                state->global_state = GLOBAL_STATE_GAME;
+                state->global_state = GLOBAL_STATE_MENU;
             }
         } break;
         case GLOBAL_STATE_GAME: {
@@ -276,6 +285,13 @@ int main(void) {
                     menu_game_over_setup(state);
                 }
             }
+            if (IsKeyPressed(KEY_B)) {
+                state->global_state = GLOBAL_STATE_TERMINAL;
+            }
+        } break;
+        case GLOBAL_STATE_BOSSBATTLE: {
+            player_update(state);
+            boss_update(state);
         } break;
         case GLOBAL_STATE_WIN: {
             level_update(state);
@@ -297,6 +313,15 @@ int main(void) {
             if (state->fader_state != FADER_STATE_IN_COMPLETE) {
                 fade_in(state);
             }
+            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+                level_load_0(state);
+                level_load_next(state);
+                player_init(&state->player);
+                player_level_setup(state);
+                birds_destroy_all(state);
+                birds_reset(state);
+                state->global_state = GLOBAL_STATE_GAME;
+            }
         } break;
         }
 
@@ -305,9 +330,7 @@ int main(void) {
         ClearBackground(GAME_OUT_OF_BOUNDS_COLOR);
 
         switch (state->global_state) {
-        case GLOBAL_STATE_TERMINAL_MENU_STARTUP:
-        case GLOBAL_STATE_TERMINAL_GAME_STARTUP:
-        case GLOBAL_STATE_TERMINAL_MANUAL_INPUT: {
+        case GLOBAL_STATE_TERMINAL: {
             terminal_render(state);
         } break;
         case GLOBAL_STATE_MENU: {
@@ -318,6 +341,10 @@ int main(void) {
             birds_render(state);
             player_render(state);
             cartoon_transition_render(state);
+        } break;
+        case GLOBAL_STATE_BOSSBATTLE: {
+            player_render(state);
+            boss_render(state);
         } break;
         case GLOBAL_STATE_WIN: {
             level_render(state);
@@ -360,3 +387,4 @@ int main(void) {
     return 0;
 }
 
+#endif
