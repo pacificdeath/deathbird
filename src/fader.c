@@ -1,23 +1,23 @@
-#define FADER_MAX 255
-#define FADER_MIN 0
-#define FADER_SPEED 1000.0f
+#define FADER_MAX 255.0f
+#define FADER_MIN 0.0f
+#define FADER_SPEED 100.0f
 
-void fade_in(State *state) {
-    state->fader_state = FADER_STATE_IN;
+bool fade_in(State *state) {
     state->fader_level -= FADER_SPEED * state->delta_time;
     if (state->fader_level <= FADER_MIN) {
         state->fader_level = FADER_MIN;
-        state->fader_state = FADER_STATE_IN_COMPLETE;
+        return true;
     }
+    return false;
 }
 
-void fade_out(State *state) {
-    state->fader_state = FADER_STATE_OUT;
+bool fade_out(State *state) {
     state->fader_level += FADER_SPEED * state->delta_time;
     if (state->fader_level >= FADER_MAX) {
         state->fader_level = FADER_MAX;
-        state->fader_state = FADER_STATE_OUT_COMPLETE;
+        return true;
     }
+    return false;
 }
 
 void fader_render(State *state) {

@@ -1,6 +1,5 @@
 param (
     [switch]$Debug,
-    [switch]$Gdb,
     [switch]$AtlasGen
 )
 
@@ -10,8 +9,11 @@ function Log {
         [string]$Color = "Green"
     )
 
+    Write-Host "##########################" -NoNewLine -ForegroundColor Magenta
+    Write-Host " [$(Get-Date -Format 'HH:mm:ss')]" -ForegroundColor Blue
     Write-Host "DEATHBIRD-COMPUTER-PROGRAM " -NoNewLine -ForegroundColor Magenta
-    Write-Host "`"$Text`"" -ForegroundColor $Color
+    Write-Host "[$Text]" -ForegroundColor $Color
+    Write-Host "##########################" -ForegroundColor Magenta
 }
 
 function CatchErrors {
@@ -26,7 +28,7 @@ $OutputExe = "./build/deathbird.exe"
 $InputC = "./src/main.c"
 
 $GccArgs = @()
-if ($Debug -or $Gdb) {
+if ($Debug) {
     $GccArgs += @(
         "-g",
         "-DDEBUG",
@@ -65,9 +67,9 @@ Log "Compiling $ProgramName"
 & gcc @GccArgs
 CatchErrors
 
-if ($Gdb) {
+if ($Debug) {
     Log "Debugging $ProgramName"
-    & gdb $OutputExe
+    & gdb $OutputExe --command "gdb-init.txt"
     CatchErrors
     exit
 }

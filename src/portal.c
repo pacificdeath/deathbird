@@ -1,9 +1,11 @@
-#include "rlgl.h"
-
 // between 0.0f and 1.0f
 static void update_smooth_disappearance(State *state) {
     float l = state->portal_linear_disappearance;
     state->portal_smooth_disappearance = 0.5f * sin((l * PI) - (PI * 0.5f)) + 0.5f;
+}
+
+static inline bool portal_has_appeared() {
+    return state->portal_linear_disappearance <= 0.0f;
 }
 
 Vector2 portal_get_position(State *state) {
@@ -23,29 +25,6 @@ float portal_distance_to_center_ratio(State *state, Vector2 position) {
     return 1.0f;
 }
 
-PortalBits portal_area_color(Area area) {
-    switch (area) {
-    case AREA_FOREST: {
-        return PORTAL_BIT_GREEN;
-    } break;
-    case AREA_MEADOWS: {
-        return PORTAL_BIT_YELLOW;
-    } break;
-    case AREA_MOUNTAINS: {
-        return (PORTAL_BIT_GREEN | PORTAL_BIT_BLUE);
-    } break;
-    case AREA_INDUSTRIAL: {
-        return PORTAL_BIT_RED;
-    } break;
-    case AREA_CASTLE: {
-        return PORTAL_BIT_BLACK;
-    } break;
-    default: {
-        return PORTAL_BIT_NONE;
-    } break;
-    }
-}
-
 void portal_init(State *state) {
     state->portal_linear_disappearance = 1.0f;
     state->portal_smooth_disappearance = 1.0f;
@@ -60,24 +39,18 @@ void portal_cleanup(State *state) {
     UnloadShader(state->portal_shader);
 }
 
-void portal_setup(State *state, PortalBits bits) {
-    state->portal_bits = bits;
-    state->portal_color.r = has_flag(bits, PORTAL_BIT_RED) * 255;
-    state->portal_color.g = has_flag(bits, PORTAL_BIT_GREEN) * 255;
-    state->portal_color.b = has_flag(bits, PORTAL_BIT_BLUE) * 255;
-    state->portal_color.a = 1.0f;
+void portal_setup(State *state, Color color) {
+    state->portal_color = color;
     state->portal_timer = 0.0f;
+    state->portal_power = 0.0f;
 }
 
-bool portal_appear(State *state) {
-    bool completed = false;
+void portal_appear(State *state) {
     state->portal_linear_disappearance -= PORTAL_APPEAR_SPEED * state->delta_time;
     if (state->portal_linear_disappearance < 0.0f) {
         state->portal_linear_disappearance = 0.0f;
-        completed = true;
     }
     update_smooth_disappearance(state);
-    return completed;
 }
 
 bool portal_disappear(State *state) {
@@ -92,15 +65,25 @@ bool portal_disappear(State *state) {
 }
 
 bool portal_inhale(State *state) {
+    state->portal_power += state->delta_time;
+
+    bool all_inhaled = true;
     if (state->player.state == PLAYER_STATE_INHALED_BY_PORTAL) {
-        return false;
+        all_inhaled = false;
     }
     for (int i = 0; i < BIRD_CAPACITY; i++) {
         if (state->birds[i].state == BIRD_STATE_INHALED_BY_PORTAL) {
-            return false;
+            all_inhaled = false;
         }
     }
-    return true;
+
+    if (all_inhaled) {
+        return portal_disappear(state);
+    } else {
+        portal_appear(state);
+    }
+
+    return false;
 }
 
 // move object towards portal center
@@ -127,38 +110,54 @@ bool portal_inhale_object(float *obj_position, float obj_step, float portal_posi
 }
 
 bool portal_exhale(State *state) {
+    bool all_exhaled = false;
     state->portal_timer -= state->delta_time;
+
+    Bird *bird_to_exhale = NULL;
+    bool exhale_player = false;
+
     if (state->portal_timer <= 0.0f) {
-        state->portal_timer = PORTAL_EXHALE_RATE;
-        bool all_objects_out = true;
         for (int i = 0; i < BIRD_CAPACITY; i++) {
-            switch (state->birds[i].state) {
-            case BIRD_STATE_INSIDE_PORTAL: {
-                state->birds[i].state = BIRD_STATE_EXHALED_BY_PORTAL;
-                return false;
-            } break;
-            case BIRD_STATE_EXHALED_BY_PORTAL: {
-                all_objects_out = false;
-            } break;
-            default: break;
+            if (state->birds[i].state == BIRD_STATE_INSIDE_PORTAL) {
+                bird_to_exhale = &state->birds[i];
+                goto portal_found_bird_to_exhale;
             }
         }
-        switch (state->player.state) {
-        case PLAYER_STATE_INSIDE_PORTAL: {
-            state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
-            return false;
-        } break;
-        case PLAYER_STATE_EXHALED_BY_PORTAL: {
-            all_objects_out = false;
-        } break;
-        default: break;
+        if (state->player.state == PLAYER_STATE_INSIDE_PORTAL) {
+            exhale_player = true;
+            goto portal_found_bird_to_exhale;
         }
-        return all_objects_out;
+        all_exhaled = true;
+    }
+
+    portal_found_bird_to_exhale:
+
+    if (bird_to_exhale != NULL || exhale_player) {
+        if (!portal_has_appeared()) {
+            portal_appear(state);
+            return false;
+        }
+        state->portal_timer = PORTAL_EXHALE_RATE;
+        if (bird_to_exhale != NULL) {
+            bird_to_exhale->state = BIRD_STATE_EXHALED_BY_PORTAL;
+        }
+        if (exhale_player) {
+            state->player.state = PLAYER_STATE_EXHALED_BY_PORTAL;
+        }
+        return false;
+    }
+
+    if (all_exhaled) {
+        return portal_disappear(state);
     }
     return false;
 }
 
-void portal_render(State *state) {
+void portal_render(State *state, int render_mode) {
+    if (state->portal_linear_disappearance >= 1.0f) {
+        return;
+    }
+
     BeginShaderMode(state->portal_shader);
 
     { // Resolution
@@ -178,10 +177,10 @@ void portal_render(State *state) {
     { // Direction
         int loc = GetShaderLocation(state->portal_shader, "direction");
         float direction = 0.0f;
-        if (has_flag(state->portal_bits, PORTAL_BIT_INHALE)) {
-            direction = 1.0f;
-        } else if (has_flag(state->portal_bits, PORTAL_BIT_EXHALE)) {
-            direction = -1.0f;
+        switch (render_mode) {
+            default: ASSERT(false);
+            case PORTAL_RENDER_MODE_INHALE: direction = 1.0f; break;
+            case PORTAL_RENDER_MODE_EXHALE: direction = -1.0f; break;
         }
         void *val = &direction;
         SetShaderValue(state->portal_shader, loc, val, SHADER_UNIFORM_FLOAT);

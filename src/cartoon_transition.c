@@ -33,7 +33,7 @@ void cartoon_transition_update(State *state) {
 
         state->cartoon_transition_size += state->delta_time * CARTOON_TRANSITION_SPEED;
         break;
-    case GLOBAL_STATE_WIN:
+    case GLOBAL_STATE_TRANSITION:
         if (cartoon_transition_is_full_darkness(state)) {
             state->cartoon_transition_size = CARTOON_TRANSITION_FULL_DARKNESS;
             return;
@@ -77,7 +77,7 @@ void cartoon_transition_render(State *state) {
     EndShaderMode();
 }
 
-void cartoon_transition_reset(State *state) {
-    state->cartoon_transition_size = 0.0f;
+void cartoon_transition_set_fully_transparent(State *state) {
+    state->cartoon_transition_size = CARTOON_TRANSITION_FULL_TRANSPARENCY;
 }
 
