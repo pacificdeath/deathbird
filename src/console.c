@@ -74,12 +74,11 @@ static inline int find_next_non_whitespace(char *string, int idx) {
 
 void console_update_dimensions(void) {
     Console *console = &state->console;
-    const int padding = state->game_width * 0.1f;
     console->rectangle = (Rectangle) {
-        state->game_left + padding,
-        state->game_top + padding,
-        state->game_width - (padding * 2),
-        state->game_height - (padding * 2),
+        state->game_left,
+        state->game_top,
+        state->game_width,
+        state->game_height / 2,
     };
 }
 
@@ -292,7 +291,6 @@ static inline void console_register_command(int type, char *name, ConsoleFunctio
 }
 
 void console_init(void) {
-    state->flags |= FLAG_CONSOLE;
     Console *console = &state->console;
     console->mode = BIRDCORE;
     console_update_dimensions();
@@ -406,7 +404,25 @@ void console_input() {
 }
 
 void console_update(void) {
+    console_update_dimensions();
     Console *console = &state->console;
+
+    if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_C)) {
+        if (has_flag(state->flags, FLAG_CONSOLE)) {
+            state->flags &= ~FLAG_CONSOLE;
+            console_reset();
+            return;
+        } else {
+            state->flags |= FLAG_CONSOLE;
+        }
+
+        // this is to prevent an accidental 'c' being inserted into the console buffer
+        return;
+    }
+
+    if (!has_flag(state->flags, FLAG_CONSOLE)) {
+        return;
+    }
 
     if (IsKeyPressed(KEY_ENTER)) {
         switch (console->mode) {
@@ -486,19 +502,19 @@ void console_render_line(const char *text, int line_idx, float line_size, float 
         DrawRectangleLinesEx(rec, 1, fg);
     }
 
-    for (int i = 0; text[i] != '\0'; i++) {
+    for (int i = 0; text[i] != '\0' && i < CONSOLE_LINE_MAX_LENGTH; i++) {
         rec.x = console->rectangle.x + (i * char_size);
         DrawTextCodepoint(
             state->font,
             text[i],
-            (Vector2){rec.x, rec.y},
-            line_size,
+            (Vector2){ rec.x, rec.y },
+            state->font_size,
             fg
         );
     }
 }
 
-void console_render_cursor(int char_size, int line_size) {
+void console_render_cursor(float char_size, float line_size) {
     Console *console = &state->console;
     Vector2 cursor_bottom = {
         console->rectangle.x + char_size * console->cursor_x,
@@ -512,6 +528,10 @@ void console_render_cursor(int char_size, int line_size) {
 }
 
 void console_render(void) {
+    if (!has_flag(state->flags, FLAG_CONSOLE)) {
+        return;
+    }
+
     Console *console = &state->console;
     DrawRectangleRec(console->rectangle, CONSOLE_BG);
     DrawRectangleLinesEx(console->rectangle, 1, CONSOLE_WHITE);
@@ -571,7 +591,6 @@ void console_render(void) {
             bool bird_shader = console->atlas_palette_idx > AREA_NONE;
 
             const char *area_name = area_names[console->atlas_palette_idx];
-            Vector2 text_position = { console->rectangle.x, console->rectangle.y };
             console_render_line(
                 TextFormat("Sprite: %i Palette: \"%s\"", console->atlas_sprite_idx, area_name),
                 0,
@@ -586,7 +605,7 @@ void console_render(void) {
                 prepare_bird_shader(console->atlas_palette_idx);
                 BeginShaderMode(state->bird_shader);
             }
-            atlas_draw(state, console->atlas_sprite_idx, (Vector2){0}, 0.0f, SCALE_NORMAL, WHITE);
+            atlas_draw(console->atlas_sprite_idx, (Vector2){0}, 0.0f, SCALE_NORMAL, WHITE);
             if (bird_shader) {
                 EndShaderMode();
             }

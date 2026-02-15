@@ -2,7 +2,7 @@
 #define FADER_MIN 0.0f
 #define FADER_SPEED 100.0f
 
-bool fade_in(State *state) {
+bool fade_in() {
     state->fader_level -= FADER_SPEED * state->delta_time;
     if (state->fader_level <= FADER_MIN) {
         state->fader_level = FADER_MIN;
@@ -11,7 +11,7 @@ bool fade_in(State *state) {
     return false;
 }
 
-bool fade_out(State *state) {
+bool fade_out() {
     state->fader_level += FADER_SPEED * state->delta_time;
     if (state->fader_level >= FADER_MAX) {
         state->fader_level = FADER_MAX;
@@ -20,7 +20,7 @@ bool fade_out(State *state) {
     return false;
 }
 
-void fader_render(State *state) {
+void fader_render() {
     Color color = { 0, 0, 0, state->fader_level };
     DrawRectangle(state->game_left, state->game_top, state->game_width, state->game_height, color);
 }

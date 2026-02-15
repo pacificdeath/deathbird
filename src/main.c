@@ -45,34 +45,49 @@ int main(void) {
 
 #include "main.h"
 #include "string_buffer.h"
-#include "text_in_blackness.c"
 #include "atlas.c"
 #include "level.c"
 #include "player.c"
 #include "bird.c"
-#include "console.c"
 #include "fader.c"
 #include "portal.c"
 #include "cartoon_transition.c"
 #include "ui.c"
+#include "menu.c"
+
+#ifdef DEBUG
+#include "console.c"
+#else
+static inline void console_init() {}
+static inline void console_update() {}
+static inline void console_update_dimensions() {}
+static inline void console_render() {}
+#endif
 
 #define TIME_CHANGE_SPEED 2.0f
 
-inline Vector2 to_pixel_position(State *state, Vector2 game_position) {
+inline Vector2 to_pixel_position(Vector2 game_position) {
     return (Vector2) {
         state->game_left + (game_position.x + 1) / 2.0f * state->game_width,
         state->game_bottom - (game_position.y + 1) / 2.0f * state->game_height
     };
 }
 
-inline Vector2 to_pixel_size(State *state, Vector2 game_size) {
+inline Vector2 to_game_position(Vector2 pixel_position) {
+    return (Vector2) {
+        ((pixel_position.x - state->game_left) / state->game_width) * 2.0f - 1.0f,
+        ((state->game_bottom - pixel_position.y) / state->game_height) * 2.0f - 1.0f
+    };
+}
+
+inline Vector2 to_pixel_size(Vector2 game_size) {
     return (Vector2) {
         game_size.x / 2.0f * state->game_width,
         game_size.y / 2.0f * state->game_height
     };
 }
 
-inline Rectangle game_rectangle(State *state) {
+inline Rectangle game_rectangle() {
     return (Rectangle) {
         .x = state->game_left,
         .y = state->game_top,
@@ -150,65 +165,6 @@ float vec2_distance(Vector2 a, Vector2 b) {
     return sqrtf(x*x + y*y);
 }
 
-void update_state_dimensions(State *state, int w, int h) {
-    float padding_w;
-    float padding_h;
-    float ratio_unit;
-    if ((w / GAME_WIDTH_RATIO) < (h / GAME_HEIGHT_RATIO)) {
-        ratio_unit = lroundf(w / GAME_WIDTH_RATIO);
-        padding_w = 0;
-        padding_h = h - (ratio_unit * GAME_HEIGHT_RATIO);
-    } else {
-        ratio_unit = lroundf(h / GAME_HEIGHT_RATIO);
-        padding_w = w - (ratio_unit * GAME_WIDTH_RATIO);
-        padding_h = 0;
-    }
-    float half_padding_w = padding_w / 2;
-    float half_padding_h = padding_h / 2;
-    state->game_width = lroundf(w - padding_w);
-    state->game_height = lroundf(h - padding_h);
-    state->scale_multiplier = ratio_unit / AREA_TEXTURE_SIZE;
-    state->game_left = lroundf(half_padding_w);
-    state->game_right = lroundf(half_padding_w + state->game_width);
-    state->game_top = lroundf(half_padding_h);
-    state->game_bottom = lroundf(half_padding_h + state->game_height);
-    state->game_center_x = lroundf(half_padding_w + (state->game_width / 2));
-    state->game_center_y = lroundf(half_padding_h + (state->game_height / 2));
-}
-
-void update_state_dimensions_window(State *state, int w, int h) {
-    state->window_width = w;
-    state->window_height = h;
-    update_state_dimensions(state, w, h);
-}
-
-void toggle_state_dimensions_fullscreen(State *state) {
-    if (IsWindowFullscreen()) {
-        ToggleFullscreen();
-        SetWindowSize(state->window_width, state->window_height);
-        update_state_dimensions(state, state->window_width, state->window_height);
-        ShowCursor();
-    } else {
-        int monitor = GetCurrentMonitor();
-        int w = GetMonitorWidth(monitor);
-        int h = GetMonitorHeight(monitor);
-        ToggleFullscreen();
-        SetWindowSize(w, h);
-        update_state_dimensions(state, w, h);
-        HideCursor();
-    }
-}
-
-int catch_window_resize(State *state) {
-    int w = GetScreenWidth();
-    int h = GetScreenHeight();
-    if (state->window_width != w || state->window_height != h) {
-        update_state_dimensions_window(state, w, h);
-        return 1;
-    }
-    return 0;
-}
-
 void transition_setup(int transition_type, int transition_value) {
     switch (transition_type) {
         default: ASSERT(false); break;
@@ -227,7 +183,7 @@ void transition_setup(int transition_type, int transition_value) {
                 case TRANSITION_VALUE_MAX: state->cartoon_transition_size = CARTOON_TRANSITION_FULL_TRANSPARENCY; break;
             }
             state->fader_level = FADER_MAX;
-            cartoon_transition_update(state);
+            cartoon_transition_update();
             break;
     }
 }
@@ -250,18 +206,19 @@ void area_init() {
 bool area_update() {
     switch (state->area) {
         default:
-            cartoon_transition_update(state);
+            cartoon_transition_update();
             return level_target_reached();
         case AREA_MEADOWS:
-            cartoon_transition_update(state);
+            cartoon_transition_update();
             if (!level_target_reached()) return false;
             if (!bird_boss_exists()) {
-                spawn_1_wheel_bird("Wheel Bird", 10 * get_loop_amount());
+                spawn_hat_bird("The Fat Bird", 10 * get_loop_amount());
+                // spawn_1_wheel_bird("Wheel Bird", 10 * get_loop_amount());
                 return false;
             }
             return bird_boss_defeated();
         case AREA_GREEN:
-            cartoon_transition_update(state);
+            cartoon_transition_update();
             if (!level_target_reached()) return false;
             if (!bird_boss_exists()) {
                 spawn_bird_shark("Bird Shark 2000", 20 * get_loop_amount());
@@ -269,24 +226,24 @@ bool area_update() {
             }
             return bird_boss_defeated();
         case AREA_VOID:
-            fade_in(state);
+            fade_in();
             return level_target_reached();
         case AREA_INDUSTRIAL:
-            fade_in(state);
+            fade_in();
             if (!level_target_reached()) return false;
             if (!bird_boss_exists()) {
-                spawn_2_wheel_birds("2 Wheel Birds?", 20 * get_loop_amount());
+                spawn_giant_wheel_bird("2 Wheel Birds?", 20 * get_loop_amount());
                 return false;
             }
             return bird_boss_defeated();
         case AREA_CASTLE:
-            if (!fade_in(state)) return false;
-            if (!portal_exhale(state)) return false;
+            if (!fade_in()) return false;
+            if (!portal_exhale()) return false;
             return level_target_reached();
         case AREA_SKY:
-            cartoon_transition_update(state);
-            if (!cartoon_transition_is_full_transparency(state)) return false;
-            if (!portal_exhale(state)) return false;
+            cartoon_transition_update();
+            if (!cartoon_transition_is_full_transparency()) return false;
+            if (!portal_exhale()) return false;
             return bird_boss_defeated();
     }
 }
@@ -300,20 +257,20 @@ void area_pre_transition() {
         } break;
         case AREA_GREEN:
             state->fader_level = FADER_MIN;
-            portal_setup(state, (Color){0,0,0,255});
+            portal_setup((Color){0,0,0,255});
             prepare_cool_time_effect();
             give_alive_birds_to_portal();
             state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
             break;
         case AREA_INDUSTRIAL:
-            portal_setup(state, (Color){255,0,0,255});
+            portal_setup((Color){255,0,0,255});
             prepare_cool_time_effect();
             give_alive_birds_to_portal();
             state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
             break;
         case AREA_CASTLE:
             transition_setup(TRANSITION_CARTOON, TRANSITION_VALUE_MAX);
-            portal_setup(state, (Color){0,0,255,255});
+            portal_setup((Color){0,0,255,255});
             give_alive_birds_to_portal();
             state->player.state = PLAYER_STATE_INHALED_BY_PORTAL;
             break;
@@ -325,44 +282,50 @@ void area_pre_transition() {
 
 bool area_transition() {
     switch (state->area) {
-        default:
-            cartoon_transition_update(state);
-            if (!cartoon_transition_is_full_darkness(state)) return false;
-            return are_all_birds_available(state);
+        default: {
+            cartoon_transition_update();
+            if (!cartoon_transition_is_full_darkness()) return false;
+            return are_all_birds_available();
+        }
         case AREA_MEADOWS: {
             if (!cool_time_effect(0.1f, 2.0f)) return false;
-            cartoon_transition_update(state);
-            if (!cartoon_transition_is_full_darkness(state)) return false;
-            return are_all_birds_available(state);
-        } break;
-        case AREA_GREEN:
-            // & to have both functions run
-            if (!(cool_time_effect(0.1f, 2.0f) & portal_inhale(state))) return false;
-            return fade_out(state);
-        case AREA_INDUSTRIAL:
-            // & to have both functions run
-            if (!(cool_time_effect(0.1f, 2.0f) & portal_inhale(state))) return false;
-            return fade_out(state);
-        case AREA_VOID:
+            cartoon_transition_update();
+            if (!cartoon_transition_is_full_darkness()) return false;
+            return are_all_birds_available();
+        }
+        case AREA_GREEN: {
+            bool a = cool_time_effect(0.1f, 2.0f);
+            bool b = portal_inhale();
+            if (!(a && b)) return false;
+            return fade_out();
+        }
+        case AREA_INDUSTRIAL: {
+            bool a = cool_time_effect(0.1f, 2.0f);
+            bool b = portal_inhale();
+            if (!(a && b)) return false;
+            return fade_out();
+        }
+        case AREA_VOID: {
             if (!are_all_birds_available()) return false;
             transition_setup(TRANSITION_FADE, TRANSITION_VALUE_MAX);
             return true;
-        case AREA_CASTLE:
-            if (!portal_inhale(state)) return false;
-            cartoon_transition_update(state);
-            return (cartoon_transition_is_full_darkness(state));
-        case AREA_SKY:
+        }
+        case AREA_CASTLE: {
+            if (!portal_inhale()) return false;
+            cartoon_transition_update();
+            return (cartoon_transition_is_full_darkness());
+        }
+        case AREA_SKY: {
             if (!cool_time_effect(0.1f, 2.0f)) return false;
-            cartoon_transition_update(state);
-            return cartoon_transition_is_full_darkness(state);
+            cartoon_transition_update();
+            return cartoon_transition_is_full_darkness();
+        }
     }
 }
 
 void travel_to_area(int area, int level) {
-    state->area = area;
-    state->portal_fuel = 0;
-    level_set(level);
-    player_level_setup(state);
+    level_setup(area, level);
+    player_level_setup();
     prepare_bird_shader(area);
     restore_bosses();
     update_bird_spawn_weights();
@@ -377,23 +340,28 @@ void travel_to_next_area() {
     travel_to_area(area, state->level_idx + 1);
 }
 
+void prepare_default_state() {
+    state->global_state = GLOBAL_STATE_DEFAULT;
+    travel_to_area(AREA_FOREST, 1);
+    transition_setup(TRANSITION_CARTOON, TRANSITION_VALUE_MIN);
+    initialize_menu();
+}
+
 int main(void) {
     state = (State *)calloc(1, sizeof(State));
     {
-        int window_min_width = AREA_TEXTURE_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
-        int window_min_height = AREA_TEXTURE_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
-        update_state_dimensions_window(state, window_min_width, window_min_height);
-
         SetTraceLogLevel(DEATHBIRD_LOG_LEVEL);
         SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-        InitWindow(state->window_width, state->window_height, "Deathbird");
+        int window_min_width = AREA_TEXTURE_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
+        int window_min_height = AREA_TEXTURE_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
+        InitWindow(window_min_width, window_min_height, "Deathbird");
         SetWindowMinSize(window_min_width, window_min_height);
         SetTargetFPS(60);
+        SetExitKey(KEY_NULL);
 
         InitAudioDevice();
 
-        state->font = LoadFont("bios.ttf");
-        update_font_size();
+        state->font = LoadFont(FONT);
 
         state->sounds_death_splats[0] = LoadSound("./sounds/splat1.wav");
         state->sounds_death_splats[1] = LoadSound("./sounds/splat2.wav");
@@ -405,67 +373,126 @@ int main(void) {
         state->sounds_death_splats[7] = LoadSound("./sounds/splat8.wav");
         state->sound_explosion = LoadSound("./sounds/explosion.wav");
 
-        atlas_init(state);
-        state->area = AREA_INDUSTRIAL;
+        atlas_init();
         state->time_scale = 1.0f;
-        level_set(1);
-        portal_init(state);
+        portal_init();
         player_init(&state->player);
-        player_level_setup(state);
+        player_level_setup();
         initialize_birds();
         console_init();
-        cartoon_transition_init(state);
+        cartoon_transition_init();
     }
 
-    int skip_frames = 0;
-    while (!WindowShouldClose()) {
-        if (has_flag(state->flags, FLAG_CONSOLE)) {
-            console_update();
-        }
-        if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_C)) {
-            if (has_flag(state->flags, FLAG_CONSOLE)) {
-                state->flags &= ~FLAG_CONSOLE;
-                console_reset();
-            } else {
-                state->flags |= FLAG_CONSOLE;
+    prepare_default_state();
+
+    while (!WindowShouldClose() && !has_flag(state->flags, FLAG_DEATHBIRD_BIG_QUIT)) {
+
+        { // Frame-specific data
+            state->frame_data = (FrameData){0};
+            state->delta_time = GetFrameTime() * state->time_scale;
+
+            bool should_enable_fullscreen = false;
+            bool should_disable_fullscreen = false;
+
+            if ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER)) {
+                // do not use raylib "ToggleFullscreen()", it does not work
+                // they even say it in their window example
+                if (has_flag(state->flags, FLAG_GAME_IS_FULLSCREEN)) {
+                    should_disable_fullscreen = true;
+                } else {
+                    should_enable_fullscreen = true;
+                }
+            } else if (has_flag(state->flags, FLAG_GAME_IS_FULLSCREEN) && IsWindowResized()) {
+                should_disable_fullscreen = true;
             }
+
+            if (should_enable_fullscreen) {
+                state->flags |= FLAG_GAME_IS_FULLSCREEN;
+
+                state->cached_window_width = GetScreenWidth();
+                state->cached_window_height = GetScreenHeight();
+
+                SetWindowState(FLAG_WINDOW_UNDECORATED|FLAG_WINDOW_TOPMOST);
+                int monitor = GetCurrentMonitor();
+                SetWindowSize(GetMonitorWidth(monitor), GetMonitorHeight(monitor));
+                SetWindowPosition(0, 0);
+            } else if (should_disable_fullscreen) {
+                state->flags &= ~FLAG_GAME_IS_FULLSCREEN;
+
+                ClearWindowState(FLAG_WINDOW_UNDECORATED|FLAG_WINDOW_TOPMOST);
+                SetWindowSize(state->cached_window_width, state->cached_window_height);
+                int monitor = GetCurrentMonitor();
+                SetWindowPosition(
+                    GetMonitorWidth(monitor)/2 - state->cached_window_width/2,
+                    GetMonitorHeight(monitor)/2 - state->cached_window_height/2
+                );
+            }
+
+            float w;
+            float h;
+
+            if (has_flag(state->flags, FLAG_GAME_IS_FULLSCREEN)) {
+                int monitor = GetCurrentMonitor();
+                w = GetMonitorWidth(monitor);
+                h = GetMonitorHeight(monitor);
+            } else {
+                w = GetScreenWidth();
+                h = GetScreenHeight();
+            }
+
+            float padding_w;
+            float padding_h;
+            float ratio_unit;
+            if ((w / GAME_WIDTH_RATIO) < (h / GAME_HEIGHT_RATIO)) {
+                ratio_unit = lroundf(w / GAME_WIDTH_RATIO);
+                padding_w = 0;
+                padding_h = h - (ratio_unit * GAME_HEIGHT_RATIO);
+            } else {
+                ratio_unit = lroundf(h / GAME_HEIGHT_RATIO);
+                padding_w = w - (ratio_unit * GAME_WIDTH_RATIO);
+                padding_h = 0;
+            }
+            float half_padding_w = padding_w / 2;
+            float half_padding_h = padding_h / 2;
+            state->game_width = lroundf(w - padding_w);
+            state->game_height = lroundf(h - padding_h);
+            state->scale_multiplier = ratio_unit / AREA_TEXTURE_SIZE;
+            state->game_left = lroundf(half_padding_w);
+            state->game_right = lroundf(half_padding_w + state->game_width);
+            state->game_top = lroundf(half_padding_h);
+            state->game_bottom = lroundf(half_padding_h + state->game_height);
+            state->game_center_x = lroundf(half_padding_w + (state->game_width / 2.0f));
+            state->game_center_y = lroundf(half_padding_h + (state->game_height / 2.0f));
         }
 
-        if (skip_frames > 0) {
-            skip_frames--;
-            BeginDrawing();
-            DrawRectangle(0, 0, state->window_width, state->window_height, BLACK);
-            EndDrawing();
-            continue;
-        }
-        state->delta_time = GetFrameTime() * state->time_scale;
-        if (IsWindowResized()) {
-            update_state_dimensions_window(state, GetScreenWidth(), GetScreenHeight());
-            update_font_size();
-            console_update_dimensions();
-            skip_frames = 2;
-            continue;
-        }
-        if (IsKeyPressed(KEY_ENTER) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))) {
-            toggle_state_dimensions_fullscreen(state);
-            skip_frames = 2;
-            continue;
-        }
+        state->font_size = (FONT_SIZE / state->font.baseSize) * state->scale_multiplier;
+
+        console_update();
 
         switch (state->global_state) {
             case GLOBAL_STATE_DEFAULT:
-                level_update(state);
-                break;
+                level_update();
+                player_update();
+                cartoon_transition_update();
+                if (!cartoon_transition_is_full_transparency()) {
+                    break;
+                }
+                if (!update_menu()) {
+                    break;
+                }
+                state->global_state = GLOBAL_STATE_GAME;
+                // fallthrough
 
             case GLOBAL_STATE_GAME:
-                level_update(state);
-                // player must be updated before birds because it can change the
-                // state of the birds which should be handled the same frame
-                player_update(state);
+                if (!update_menu()) {
+                    break;
+                }
+                level_update();
+                player_update();
                 update_birds();
                 if (state->player.lives == 0) {
                     state->global_state = GLOBAL_STATE_GAME_OVER;
-                    transition_setup(TRANSITION_FADE, TRANSITION_VALUE_MAX);
+                    initialize_menu();
                     break;
                 }
                 if (!area_update()) {
@@ -480,8 +507,8 @@ int main(void) {
                 break;
 
             case GLOBAL_STATE_TRANSITION:
-                level_update(state);
-                player_update(state);
+                level_update();
+                player_update();
                 update_birds();
                 if (!area_transition()) {
                     break;
@@ -491,8 +518,9 @@ int main(void) {
                 break;
 
             case GLOBAL_STATE_GAME_OVER:
-                fade_in(state);
-                if (!player_key_pressed(KEY_ENTER) && !player_key_pressed(KEY_SPACE)) {
+                level_update();
+                update_birds();
+                if (!update_menu()) {
                     break;
                 }
                 player_init(&state->player);
@@ -510,104 +538,104 @@ int main(void) {
         switch (state->global_state) {
 
             case GLOBAL_STATE_DEFAULT:
-                level_render(state);
+                level_render();
+                player_render();
+                render_menu();
+                cartoon_transition_render();
                 break;
 
             case GLOBAL_STATE_GAME:
                 switch (state->area) {
                     default:
-                        level_render(state);
+                        level_render();
                         render_birds();
-                        player_render(state);
-                        cartoon_transition_render(state);
+                        player_render();
+                        cartoon_transition_render();
                         ui_render();
                         break;
                     case AREA_VOID:
-                        level_render(state);
+                        level_render();
                         render_birds();
-                        player_render(state);
-                        fader_render(state);
+                        player_render();
+                        fader_render();
                         break;
                     case AREA_INDUSTRIAL:
-                        level_render(state);
+                        level_render();
                         render_birds();
                         ui_render();
-                        fader_render(state);
-                        player_render(state);
+                        fader_render();
+                        player_render();
                         break;
                     case AREA_CASTLE:
-                        level_render(state);
-                        portal_render(state, PORTAL_RENDER_MODE_EXHALE);
+                        level_render();
+                        portal_render(PORTAL_RENDER_MODE_EXHALE);
                         render_birds();
-                        player_render(state);
-                        fader_render(state);
+                        player_render();
+                        fader_render();
                         ui_render();
                         break;
                     case AREA_SKY:
-                        level_render(state);
-                        portal_render(state, PORTAL_RENDER_MODE_EXHALE);
+                        level_render();
+                        portal_render(PORTAL_RENDER_MODE_EXHALE);
                         render_birds();
-                        player_render(state);
-                        cartoon_transition_render(state);
+                        player_render();
+                        cartoon_transition_render();
                         ui_render();
                         break;
                 }
+                render_menu();
                 break;
 
             case GLOBAL_STATE_TRANSITION:
                 switch (state->area) {
                     default:
-                        level_render(state);
+                        level_render();
                         render_birds();
-                        player_render(state);
-                        cartoon_transition_render(state);
+                        player_render();
+                        cartoon_transition_render();
                         ui_render();
                         break;
                     case AREA_GREEN:
-                        level_render(state);
-                        portal_render(state, PORTAL_RENDER_MODE_INHALE);
-                        fader_render(state);
+                        level_render();
+                        portal_render(PORTAL_RENDER_MODE_INHALE);
+                        fader_render();
                         render_birds();
-                        player_render(state);
+                        player_render();
                         break;
                     case AREA_INDUSTRIAL:
-                        level_render(state);
-                        portal_render(state, PORTAL_RENDER_MODE_INHALE);
-                        fader_render(state);
+                        level_render();
+                        portal_render(PORTAL_RENDER_MODE_INHALE);
+                        fader_render();
                         render_birds();
-                        player_render(state);
+                        player_render();
                         ui_render();
                         break;
                     case AREA_VOID:
-                        level_render(state);
+                        level_render();
                         render_birds();
-                        player_render(state);
+                        player_render();
                         break;
                     case AREA_CASTLE:
-                        level_render(state);
-                        portal_render(state, PORTAL_RENDER_MODE_INHALE);
+                        level_render();
+                        portal_render(PORTAL_RENDER_MODE_INHALE);
                         render_birds();
-                        player_render(state);
-                        cartoon_transition_render(state);
+                        player_render();
+                        cartoon_transition_render();
                         ui_render();
                         break;
                 }
+                render_menu();
                 break;
 
             case GLOBAL_STATE_GAME_OVER:
-                game_over_text(state);
-                fader_render(state);
-                break;
-
-            case GLOBAL_STATE_BOSSBATTLE:
-                player_render(state);
+                level_render();
+                render_birds();
+                render_menu();
                 break;
 
         }
 
-        if (has_flag(state->flags, FLAG_CONSOLE)) {
-            console_render();
-        }
+        console_render();
 
         if (!has_flag(state->flags, FLAG_SHOW_OUT_OF_BOUNDS)) {
             // render out of bounds padding bars
@@ -623,9 +651,9 @@ int main(void) {
         EndDrawing();
     }
 
-    atlas_cleanup(state);
+    atlas_cleanup();
     unload_bird_shaders();
-    portal_cleanup(state);
+    portal_cleanup();
 
     for (int i = 0; i < DEATH_SOUND_AMOUNT; i++) {
         UnloadSound(state->sounds_death_splats[i]);

@@ -20,6 +20,7 @@
 #define BIRD_Y_SECTIONS 7
 #define BIRD_HIGHEST_MULTIPLIER_CAPACITY 16
 #define BIRD_CIRCLE_CAPACITY 4
+#define BIRD_CIRCLE_ANGULAR_BASE_SPEED 10.0f
 #define BIRD_STATIONARY_CAPACITY 8
 #define BIRD_CIRCLE_MAX_BIRDS 16
 #define BOSS_CAPACITY 2
@@ -28,12 +29,13 @@
 #define BOSS_MIN_Y (-0.7f)
 #define BOSS_MAX_Y 0.7f
 #define BOSS_SPEED 0.5f
+#define BIRD_FREQUENCY 0.3f
 
 #define TRAILING_FIREBALL_HISTORY_SIZE 256
 #define TRAILING_FIREBALLS_PER_DEATH_PART 7
 #define TRAILING_FIREBALL_INTERVAL 0.2f
 
-#define CONSOLE_MAX_LINES 32
+#define CONSOLE_MAX_LINES 16
 #define CONSOLE_LINE_MAX_LENGTH 64
 #define CONSOLE_INPUT_LINE_INDEX (-1)
 #define CONSOLE_BG ((Color){0,0,0,215})
@@ -45,8 +47,8 @@
 #define CONSOLE_COMMAND_SELECTED_FG_COLOR ((Color){128,255,128,255})
 #define CONSOLE_COMMAND_SELECTED_BG_COLOR ((Color){0,255,0,128})
 
-#define FONT "bios.ttf"
-#define FONT_SIZE 200
+#define FONT "ComicMono.ttf"
+#define FONT_SIZE 250
 
 #define PORTAL_RADIUS 0.4f
 #define PORTAL_APPEAR_SPEED 1.0f
@@ -65,6 +67,7 @@
 #define DEATH_SOUND_AMOUNT 8
 
 #define BOSS_NORMAL_BULLET_CAPACITY 32
+#define PI_X2 (PI * 2)
 
 enum {
     TIMER_STATE_NONE,
@@ -140,8 +143,6 @@ const char *player_state_names[] = {
 
 enum {
     PLAYER_FLAG_HIDDEN = 1 << 0,
-    PLAYER_FLAG_DRILL_UP = 1 << 1,
-    PLAYER_FLAG_DRILL_DOWN = 1 << 2,
 };
 
 #define BIRD_STATE_LIST \
@@ -174,8 +175,11 @@ const char *bird_state_names[] = {
     X(BOMB) \
     X(MONITOR) \
     X(STATIONARY) \
+    X(STATIONARY_WITH_WHEELS) \
     X(WHEELS) \
     X(SHARK) \
+    X(GIANT_WHEELS) \
+    X(HAT) \
     X(TOTAL)
 enum {
 #define X(name) BIRD_TYPE_##name,
@@ -352,11 +356,19 @@ typedef struct Player {
 } Player;
 
 enum {
-    FLAG_NONE = 0,
-    FLAG_CONSOLE = 1 << 0,
-    FLAG_SHOW_COLLISION_BOUNDS = 1 << 1,
-    FLAG_SHOW_OUT_OF_BOUNDS = 1 << 2,
-    FLAG_BIRD_SHARK_HEALTH_1 = 1 << 3,
+    FLAG_GAME_IS_FULLSCREEN = 1 << 0,
+    FLAG_GAME_IS_PAUSED = 1 << 1,
+    FLAG_CONSOLE = 1 << 3,
+    FLAG_SHOW_COLLISION_BOUNDS = 1 << 4,
+    FLAG_SHOW_OUT_OF_BOUNDS = 1 << 5,
+    FLAG_BIRD_SHARK_HEALTH_1 = 1 << 6,
+    FLAG_DEATHBIRD_BIG_QUIT = 1 << 7,
+};
+
+enum {
+    FRAME_FLAG_BIRDS_HAS_BEEN_UPDATED = 1 << 0,
+    FRAME_FLAG_LEVEL_HAS_BEEN_UPDATED = 1 << 1,
+    FRAME_FLAG_PLAYER_HAS_BEEN_UPDATED = 1 << 2,
 };
 
 enum {
@@ -364,6 +376,13 @@ enum {
     BOSS_STATE_DOWN,
     BOSS_STATE_RIGHT,
     BOSS_STATE_UP,
+};
+
+enum {
+    MENU_STATE_OPENING,
+    MENU_STATE_ACTIVE,
+    MENU_STATE_CLOSING,
+    MENU_STATE_INACTIVE,
 };
 
 typedef struct Bird {
@@ -421,7 +440,6 @@ typedef struct BirdStationary {
 
 typedef struct Level {
     int sprite_scroller_amount;
-    float bird_frequency;
     float bird_timer;
     int required_fuel;
 } Level;
@@ -430,7 +448,12 @@ typedef struct Boss {
     Bird *bird;
     int state;
     int full_health;
+    float path_position;
 } Boss;
+
+typedef struct FrameData {
+    int flags;
+} FrameData;
 
 typedef struct State {
     int global_state;
@@ -438,8 +461,10 @@ typedef struct State {
     Font font;
     float font_size;
 
-    int window_width;
-    int window_height;
+    FrameData frame_data;
+
+    int cached_window_width;
+    int cached_window_height;
 
     int game_width;
     int game_height;
@@ -449,6 +474,17 @@ typedef struct State {
     int game_bottom;
     int game_center_x;
     int game_center_y;
+
+    int menu_state;
+    int menu_cached_global_state;
+    Rectangle menu_rectangle;
+    int menu_selected_idx;
+    float menu_big_animation;
+    float menu_sine_animation;
+    float menu_select_animation;
+    float menu_selection_bird_position;
+    float menu_selection_bird_animation;
+    int menu_selection_bird_sprite;
 
     Sound sounds_death_splats[DEATH_SOUND_AMOUNT];
     Sound sound_explosion;
@@ -514,19 +550,18 @@ typedef struct State {
     float time_scale;
     int timer_state;
     float timer;
-
-    Boss boss;
 } State;
 
 State *state;
 
-Vector2 to_pixel_position(State *state, Vector2 game_position);
-Vector2 to_pixel_size(State *state, Vector2 game_size);
+Vector2 to_pixel_position(Vector2 game_position);
+Vector2 to_game_position(Vector2 pixel_position);
+Vector2 to_pixel_size(Vector2 game_size);
 
 void travel_to_area(int area, int level);
 void travel_to_next_area();
 
-Rectangle game_rectangle(State *state);
+Rectangle game_rectangle();
 bool has_flag(int flags, int flag);
 float randf(float min, float max);
 
@@ -534,10 +569,10 @@ Vector2 vec2_normalized(float x, float y);
 Vector2 vec2_direction(Vector2 from, Vector2 to);
 float vec2_distance(Vector2 a, Vector2 b);
 
-void atlas_draw(State *state, Sprite sprite, Vector2 position, float rotation, Vector2 scale, Color color);
+void atlas_draw(Sprite sprite, Vector2 position, float rotation, Vector2 scale, Color color);
 
-Vector2 portal_get_position(State *state);
-float portal_distance_to_center_ratio(State *state, Vector2 position);
+Vector2 portal_get_position();
+float portal_distance_to_center_ratio(Vector2 position);
 bool portal_inhale_object(float *obj_position, float obj_step, float portal_position);
 
 BirdHit apply_damage_to_bird_from_player(Bird *bird);
@@ -547,10 +582,6 @@ inline static Vector2 move_a_towards_b(Vector2 a, Vector2 b, float t) {
         a.x + ((b.x - a.x) * state->delta_time * t),
         a.y + ((b.y - a.y) * state->delta_time * t),
     };
-}
-
-inline static void update_font_size() {
-    state->font_size = (FONT_SIZE / state->font.baseSize) * state->scale_multiplier;
 }
 
 #endif

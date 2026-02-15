@@ -79,8 +79,8 @@ void restore_bosses() {
 }
 
 void draw_bird_collision_bounds(Bird *bird) {
-    Vector2 px_bird_position = to_pixel_position(state, bird->position);
-    Vector2 px_collision_bounds = to_pixel_size(state, bird->alive.collision_bounds);
+    Vector2 px_bird_position = to_pixel_position(bird->position);
+    Vector2 px_collision_bounds = to_pixel_size(bird->alive.collision_bounds);
     Vector2 px_rec_top_left = {
         px_bird_position.x - px_collision_bounds.x,
         px_bird_position.y - px_collision_bounds.y
@@ -112,69 +112,86 @@ void get_bird_death_part_sprites(Sprite sprites[BIRD_DEATH_PARTS], int bird_type
         }
     }
     switch (bird_type) {
-        default: ASSERT(false);
+        default:
+            ASSERT(false);
         case BIRD_TYPE_REGULAR:
         case BIRD_TYPE_RESERVED:
-        case BIRD_TYPE_STATIONARY: {
+        case BIRD_TYPE_STATIONARY:
             sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_WING;
             sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_BODY;
             sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_WING;
             sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_EYE;
             sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_HEAD;
             sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
-        } break;
-        case BIRD_TYPE_UMBRELLA_ABOVE:
-        case BIRD_TYPE_UMBRELLA_UNDER: {
-            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_EYE;
-            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_EYE;
-            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_UMBRELLA;
-        } break;
-        case BIRD_TYPE_GIANT: {
-            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_GIANT_BIRD_WING;
-            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_GIANT_BIRD_BODY;
-            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_GIANT_BIRD_WING;
-            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_EYE;
-            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_GIANT_BIRD_HEAD;
-            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
-        } break;
-        case BIRD_TYPE_TINY: {
-            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_GORE2;
-        } break;
-        case BIRD_TYPE_BOMB: {
-            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_EYE;
-            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
-        } break;
-        case BIRD_TYPE_WHEELS: {
+            break;
+        case BIRD_TYPE_STATIONARY_WITH_WHEELS:
             sprites[BIRD_DEATH_PARTS - 6] = SPRITE_WHEEL;
             sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
             sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
             sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
             sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
             sprites[BIRD_DEATH_PARTS - 1] = SPRITE_WHEEL;
-        } break;
-        case BIRD_TYPE_SHARK: {
+            break;
+        case BIRD_TYPE_UMBRELLA_ABOVE:
+        case BIRD_TYPE_UMBRELLA_UNDER:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_EYE;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_EYE;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_UMBRELLA;
+            break;
+        case BIRD_TYPE_GIANT:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_GIANT_BIRD_WING;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_GIANT_BIRD_BODY;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_GIANT_BIRD_WING;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_EYE;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_GIANT_BIRD_HEAD;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
+            break;
+        case BIRD_TYPE_TINY:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_GORE2;
+            break;
+        case BIRD_TYPE_BOMB:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_EYE;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
+            break;
+        case BIRD_TYPE_WHEELS:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_WHEEL;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_WHEEL;
+            break;
+        case BIRD_TYPE_SHARK:
             sprites[BIRD_DEATH_PARTS - 6] = SPRITE_SHARK_WING;
             sprites[BIRD_DEATH_PARTS - 5] = SPRITE_SHARK_BODY;
             sprites[BIRD_DEATH_PARTS - 4] = SPRITE_SHARK_WING;
             sprites[BIRD_DEATH_PARTS - 3] = SPRITE_SHARK_EYE;
             sprites[BIRD_DEATH_PARTS - 2] = SPRITE_SHARK_HEAD;
             sprites[BIRD_DEATH_PARTS - 1] = SPRITE_SHARK_EYE;
-        } break;
-        case BIRD_TYPE_MONITOR: {
+            break;
+        case BIRD_TYPE_GIANT_WHEELS:
+            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_GIANT_WHEEL;
+            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
+            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
+            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_GIANT_WHEEL;
+            break;
+        case BIRD_TYPE_MONITOR:
             ASSERT(false);
-        } break;
+            break;
     }
 }
 
@@ -191,7 +208,7 @@ void update_death_animation(Bird *bird) {
 void death_animation_render(Bird *bird) {
     if (bird->dead.anim_idx < bird->dead.anim_sprite_amount) {
         Sprite blood_sprite = bird->dead.anim_start_sprite + bird->dead.anim_idx;
-        atlas_draw(state, blood_sprite, bird->position, 0.0f, get_bird_scale(bird), OPAQUE);
+        atlas_draw(blood_sprite, bird->position, 0.0f, get_bird_scale(bird), OPAQUE);
     }
 }
 
@@ -284,7 +301,6 @@ void render_trailing_fireballs() {
     for (int i = 0; i < BIRD_DEATH_PARTS; i++) {
         for (int j = TRAILING_FIREBALLS_PER_DEATH_PART - 1; j >= 0; j--) {
             atlas_draw(
-                state,
                 SPRITE_FIREBALL1 + j,
                 tfb->positions[i][j],
                 tfb->bird->dead.rotations[i],
@@ -299,10 +315,8 @@ void render_trailing_fireballs_with_portal_influence() {
     TrailingFireballs *tfb = &state->trailing_fireballs;
     for (int i = 0; i < BIRD_DEATH_PARTS; i++) {
         for (int j = TRAILING_FIREBALLS_PER_DEATH_PART - 1; j >= 0; j--) {
-            float ratio = portal_distance_to_center_ratio(state, tfb->positions[i][j]);
-            float c = ratio * 255.0f;
-            Color color = {c,c,c,255};
-            atlas_draw( state, SPRITE_FIREBALL1 + j, tfb->positions[i][j], tfb->bird->dead.rotations[i], SCALE_UNIFORM(ratio), OPAQUE);
+            float ratio = portal_distance_to_center_ratio(tfb->positions[i][j]);
+            atlas_draw(SPRITE_FIREBALL1 + j, tfb->positions[i][j], tfb->bird->dead.rotations[i], SCALE_UNIFORM(ratio), OPAQUE);
         }
     }
 }
@@ -336,7 +350,8 @@ void bird_death_setup(Bird *bird, Vector2 master_velocity, float multiplier) {
             bird->dead.rotations[umbrella_idx] = 180.0f;
         } break;
         case BIRD_TYPE_BOMB:
-        case BIRD_TYPE_WHEELS: {
+        case BIRD_TYPE_WHEELS:
+        case BIRD_TYPE_GIANT_WHEELS: {
             bird->dead.anim_start_sprite = SPRITE_EXPLOSION1;
             bird->dead.anim_sprite_amount = 6;
         } break;
@@ -358,11 +373,10 @@ void render_bird_parts_with_portal_influence(Bird *bird) {
     Sprite sprites[BIRD_DEATH_PARTS];
     get_bird_death_part_sprites(sprites, bird->type);
     for (int i = 0; i < BIRD_DEATH_PARTS; i++) {
-        float ratio = portal_distance_to_center_ratio(state, bird->dead.positions[i]);
+        float ratio = portal_distance_to_center_ratio(bird->dead.positions[i]);
         float c = ratio * 255.0f;
         Color color = {c,c,c,255};
-        Vector2 scale = get_bird_scale(bird);
-        atlas_draw(state, sprites[i], bird->dead.positions[i], bird->dead.rotations[i], SCALE_UNIFORM(ratio), color);
+        atlas_draw(sprites[i], bird->dead.positions[i], bird->dead.rotations[i], SCALE_UNIFORM(ratio), color);
     }
 }
 
@@ -420,7 +434,7 @@ void update_bird_spawn_weights() {
 }
 
 float bird_move_speed_by_y_position(float y) {
-    return 0.15f + (y + 0.75f) * 0.15f;
+    return 0.2f + (y + 0.75f) * 0.15f;
 }
 
 float get_next_bird_spawn_y_position() {
@@ -511,6 +525,16 @@ void setup_bird_by_level(Bird *bird) {
     }
 }
 
+BirdStationary bird_stationary_find(Bird *bird) {
+    for (int j = 0; j < BIRD_STATIONARY_CAPACITY; j++) {
+        if (state->bird_stationaries[j].bird == bird) {
+            return state->bird_stationaries[j];
+        }
+    }
+    ASSERT(false);
+    return (BirdStationary){0};
+}
+
 void bird_stationary_add(int index, Vector2 position) {
     ASSERT(index < BIRD_STATIONARY_CAPACITY);
     Bird *stationary = get_available_bird();
@@ -519,11 +543,12 @@ void bird_stationary_add(int index, Vector2 position) {
         .position = position
     };
     stationary->state = BIRD_STATE_ALIVE;
-    stationary->type = BIRD_TYPE_STATIONARY;
     stationary->position.x = position.x;
     if (position.y < 0) {
+        stationary->type = BIRD_TYPE_STATIONARY_WITH_WHEELS;
         stationary->position.y = -1.1f;
     } else {
+        stationary->type = BIRD_TYPE_STATIONARY;
         stationary->position.y = 1.1f;
     }
     stationary->alive.health = 1;
@@ -574,6 +599,10 @@ void initialize_birds() {
     state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_MONITOR_BIRD_BODY] = V3(0.0f,0.5f,1.0f);
     state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_MONITOR_BIRD_BEAK] = V3(1.0f,0.5f,0.0f);
     state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_MONITOR_BIRD_EYE] = V3_UNIFORM(1.0f);
+    state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_WHEEL_TIRE1] = V3_UNIFORM(0.5f);
+    state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_WHEEL_TIRE2] = V3_UNIFORM(0.25f);
+    state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_WHEEL_RIM1] = V3(1.0f,0.0f,0.0f);
+    state->bird_palette[BIRD_PALETTE_WHITE][BIRD_PALETTE_IDX_WHEEL_RIM2] = V3(0.75f,0.0f,0.0f);
 
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_OUTLINE] = V3(0.0f,0.0f,0.0f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_BODY] = V3(1.0f,1.0f,0.0f);
@@ -599,7 +628,6 @@ void initialize_birds() {
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_MONITOR_BIRD_BODY] = V3(1.0f,0.0f,0.0f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_MONITOR_BIRD_BEAK] = V3(1.0f,1.0f,0.0f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_MONITOR_BIRD_EYE] = V3_UNIFORM(1.0f);
-    state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_WHEEL_TIRE1] = V3(0.25f,0.25f,0.25f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_WHEEL_TIRE1] = V3_UNIFORM(0.5f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_WHEEL_TIRE2] = V3_UNIFORM(0.25f);
     state->bird_palette[BIRD_PALETTE_YELLOW][BIRD_PALETTE_IDX_WHEEL_RIM1] = V3(1.0f,0.5f,0.0f);
@@ -837,6 +865,27 @@ Boss *find_boss_by_bird(Bird *bird) {
     return NULL;
 }
 
+void spawn_hat_bird(const char *name, int health) {
+    int boss_slot = find_available_boss_slot();
+    ASSERT(boss_slot >= 0);
+
+    Bird *hat_bird = get_available_bird_in_reverse_order();
+    hat_bird->state = BIRD_STATE_ALIVE;
+    hat_bird->type = BIRD_TYPE_HAT;
+    hat_bird->position = (Vector2){0};
+    hat_bird->alive.health = has_flag(state->flags, FLAG_BIRD_SHARK_HEALTH_1) ? 1 : health;
+    hat_bird->alive.collision_bounds.x = 0.1f;
+    hat_bird->alive.collision_bounds.y = 0.1f;
+
+    state->bosses[boss_slot] = (Boss){
+        .bird = hat_bird,
+        .state = 0,
+        .full_health = health,
+    };
+
+    state->bosses_name = name;
+}
+
 void spawn_wheel_bird(const char *name, int health, Vector2 position, int init_state) {
     int boss_slot = find_available_boss_slot();
     ASSERT(boss_slot >= 0);
@@ -871,15 +920,37 @@ void spawn_2_wheel_birds(const char *name, int health) {
     spawn_wheel_bird(name, health, (Vector2){RESET_LEFT, -0.6f}, BOSS_STATE_RIGHT);
 }
 
+void spawn_giant_wheel_bird(const char *name, int health) {
+    int boss_slot = find_available_boss_slot();
+    ASSERT(boss_slot >= 0);
+
+    Bird *b = get_available_bird_in_reverse_order();
+    b->state = BIRD_STATE_ALIVE;
+    b->type = BIRD_TYPE_GIANT_WHEELS;
+    b->position.x = RESET_RIGHT;
+    b->position.y = -0.85f;
+    b->alive.health = has_flag(state->flags, FLAG_BIRD_SHARK_HEALTH_1) ? 1 : health;
+    b->alive.collision_bounds.x = 0.2f;
+    b->alive.collision_bounds.y = 0.2f;
+
+    state->bosses[boss_slot] = (Boss){
+        .bird = b,
+        .state = BOSS_STATE_LEFT,
+        .full_health = health,
+    };
+
+    state->bosses_name = name;
+}
+
 void render_wheel_bird_line(Bird *bird, Color color) {
     Boss *boss = find_boss_by_bird(bird);
     ASSERT(boss != NULL);
 
-    float half_wheel_bird_height = ((2.0/GAME_HEIGHT_RATIO) / (AREA_TEXTURE_SIZE/sprite_rectangles[SPRITE_WHEEL_BIRD1].height)) / 2;
+    float half_wheel_bird_height = ((2.0/GAME_HEIGHT_RATIO) / (AREA_TEXTURE_SIZE/sprite_rectangles[bird->alive.current_sprite].height)) / 2;
     float line_y = boss->bird->position.y - half_wheel_bird_height;
     DrawLineEx(
-        to_pixel_position(state, (Vector2){ 1.0f, line_y }),
-        to_pixel_position(state, (Vector2){ -1.0f, line_y }),
+        to_pixel_position((Vector2){ 1.0f, line_y }),
+        to_pixel_position((Vector2){ -1.0f, line_y }),
         5, color
     );
 }
@@ -908,7 +979,13 @@ void spawn_bird_shark(const char *name, int health) {
 
 void update_birds() {
     bool is_global_state_suitable_for_birds = state->global_state == GLOBAL_STATE_GAME;
+
     if (is_global_state_suitable_for_birds) {
+
+        // player must be updated before birds because it can change the
+        // state of the birds which should be handled the same frame
+        ASSERT(has_flag(state->frame_data.flags, FRAME_FLAG_PLAYER_HAS_BEEN_UPDATED));
+
         state->current_level.bird_timer -= state->delta_time;
     }
 
@@ -944,7 +1021,7 @@ void update_birds() {
                         state->bird_monitor->alive.health = 3;
                         state->bird_monitor->alive.collision_bounds.x = 0.1f;
                         state->bird_monitor->alive.collision_bounds.y = 0.15f;
-                        state->current_level.bird_timer = state->current_level.bird_frequency;
+                        state->current_level.bird_timer = BIRD_FREQUENCY;
                     } else {
                         state->bird_monitor = get_available_bird();
                         state->bird_monitor->state = BIRD_STATE_ALIVE;
@@ -955,7 +1032,7 @@ void update_birds() {
                         state->bird_monitor->alive.health = 1;
                         state->bird_monitor->alive.collision_bounds.x = 0.1f;
                         state->bird_monitor->alive.collision_bounds.y = 0.15f;
-                        state->current_level.bird_timer = state->current_level.bird_frequency;
+                        state->current_level.bird_timer = BIRD_FREQUENCY;
                     }
                 } else if (state->bird_circle_count < BIRD_CIRCLE_CAPACITY && GetRandomValue(0, 9) == 0) {
                     BirdCircle *circle = &state->bird_circles[state->bird_circle_count++];
@@ -985,12 +1062,12 @@ void update_birds() {
                         circle->position.y = max_y;
                     }
                     circle->move_speed = bird_move_speed_by_y_position(circle->position.y);
-                    circle->angular_speed = 20.0f / circle->count;
+                    circle->angular_speed = BIRD_CIRCLE_ANGULAR_BASE_SPEED / circle->count;
 
-                    state->current_level.bird_timer = (state->current_level.bird_frequency * circle->count);
+                    state->current_level.bird_timer = (BIRD_FREQUENCY * circle->count);
                 } else {
                     setup_bird_by_level(bird);
-                    state->current_level.bird_timer = state->current_level.bird_frequency;
+                    state->current_level.bird_timer = BIRD_FREQUENCY;
                 }
             } break;
             case BIRD_STATE_ALIVE: {
@@ -1009,21 +1086,41 @@ void update_birds() {
                             bird_set_available(bird);
                         }
                     } break;
-                    case BIRD_TYPE_STATIONARY: {
-                        Vector2 stationary_position = {0};
-                        for (int j = 0; j < BIRD_STATIONARY_CAPACITY; j++) {
-                            if (state->bird_stationaries[j].bird == bird) {
-                                stationary_position = state->bird_stationaries[j].position;
-                                break;
-                            }
-                        }
-                        bird->position.y += (stationary_position.y - bird->position.y) * state->delta_time * 5.0f;
+                    case BIRD_TYPE_STATIONARY:
+                    case BIRD_TYPE_STATIONARY_WITH_WHEELS: {
+                        BirdStationary stationary = bird_stationary_find(bird);
+                        bird->position.y += (stationary.position.y - bird->position.y) * state->delta_time * 5.0f;
                     } break;
                     case BIRD_TYPE_RESERVED: {
                         // position is controlled by the bird circle
                         // the bird circle is destroyed when all its birds are completely dead
                         if (bird->position.x < RESET_LEFT) {
                             bird->state = BIRD_STATE_RESERVED;
+                        }
+                    } break;
+                    case BIRD_TYPE_HAT: {
+                        Boss *hat_bird = find_boss_by_bird(bird);
+                        ASSERT(hat_bird != NULL);
+
+                        hat_bird->path_position += state->delta_time * 0.5f;
+                        float pi_x2 = PI * 2.0f;
+                        if (hat_bird->path_position >= pi_x2) {
+                            hat_bird->path_position -= pi_x2;
+                        }
+
+                        float previous_x = bird->position.x;
+
+                        bird->position = (Vector2){
+                            .x = cosf(hat_bird->path_position) * 0.8f,
+                            .y = sinf(hat_bird->path_position * 2.0f) * 0.8f,
+                        };
+
+                        if (bird->flip_sprite) {
+                            if (bird->position.x < previous_x) {
+                                bird->flip_sprite = false;
+                            }
+                        } else if (bird->position.x > previous_x) {
+                            bird->flip_sprite = true;
                         }
                     } break;
                     case BIRD_TYPE_WHEELS: {
@@ -1045,6 +1142,39 @@ void update_birds() {
                                 bird->position.x = BOSS_MAX_X;
                                 wheel_bird->state = BOSS_STATE_LEFT;
                                 bird->flip_sprite = false;
+                                break;
+                        }
+                    } break;
+                    case BIRD_TYPE_GIANT_WHEELS: {
+                        Boss *b = find_boss_by_bird(bird);
+                        ASSERT(b != NULL);
+
+                        float g = 0.85f;
+                        float move = (BOSS_SPEED * state->delta_time);
+                        switch (b->state) {
+                            case BOSS_STATE_LEFT:
+                                bird->position.x -= move;
+                                if (bird->position.x > -g) break;
+                                bird->position.x = -g;
+                                b->state = BOSS_STATE_UP;
+                                break;
+                            case BOSS_STATE_UP:
+                                bird->position.y += move;
+                                if (bird->position.y < g) break;
+                                bird->position.y = g;
+                                b->state = BOSS_STATE_RIGHT;
+                                break;
+                            case BOSS_STATE_RIGHT:
+                                bird->position.x += move;
+                                if (bird->position.x < g) break;
+                                bird->position.x = g;
+                                b->state = BOSS_STATE_DOWN;
+                                break;
+                            case BOSS_STATE_DOWN:
+                                bird->position.y -= move;
+                                if (bird->position.y > -g) break;
+                                bird->position.y = -g;
+                                b->state = BOSS_STATE_LEFT;
                                 break;
                         }
                     } break;
@@ -1141,7 +1271,7 @@ void update_birds() {
                 }
             } break;
             case BIRD_STATE_INHALED_BY_PORTAL: {
-                Vector2 portal_position = portal_get_position(state);
+                Vector2 portal_position = portal_get_position();
                 bool all_inside_portal = true;
                 for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
                     Vector2 direction = vec2_direction(bird->dead.positions[j], portal_position);
@@ -1259,6 +1389,8 @@ void update_birds() {
             };
         }
     }
+
+    state->frame_data.flags |= FRAME_FLAG_BIRDS_HAS_BEEN_UPDATED;
 }
 
 BirdHit apply_damage_to_bird(Bird *bird, int damage, Vector2 from, float velocity_multiplier) {
@@ -1319,10 +1451,11 @@ BirdHit apply_damage_to_bird(Bird *bird, int damage, Vector2 from, float velocit
                     int half = BIRD_STATIONARY_CAPACITY / 2;
                     float left = -1.0f;
                     float width = 2.0f;
-                    float space = width / (half + 1);
+                    float space = width / (half + 1.0f);
+                    float offset = 0.875f;
                     bird_stationary_add(i, (Vector2) {
                         left + space + (space * (i % half)),
-                        (i < 4) ? 0.9f : -0.9f,
+                        (i < 4) ? offset : -offset,
                     });
                 }
             } break;
@@ -1365,7 +1498,7 @@ BirdHit apply_damage_to_bird_from_player(Bird *bird) {
 }
 
 void give_alive_birds_to_portal() {
-    Vector2 portal_position = portal_get_position(state);
+    Vector2 portal_position = portal_get_position();
     for (int i = 0; i < BIRD_CAPACITY; i++) {
         switch (state->birds[i].state) {
             default: continue;
@@ -1417,56 +1550,110 @@ void render_birds() {
             case BIRD_STATE_ALIVE: {
                 Sprite bird_sprite;
                 switch (bird->type) {
-                    default: bird_sprite = SPRITE_BIRD1 + bird->alive.current_sprite; break;
-                    case BIRD_TYPE_GIANT: bird_sprite = SPRITE_GIANT_BIRD1 + bird->alive.current_sprite; break;
+                    case BIRD_TYPE_REGULAR:
+                    case BIRD_TYPE_RESERVED:
+                    case BIRD_TYPE_STATIONARY:
+                        bird_sprite = SPRITE_BIRD1;
+                        break;
+                    case BIRD_TYPE_STATIONARY_WITH_WHEELS:
+                        bird_sprite = SPRITE_WHEEL_BIRD1;
+                        break;
+                    case BIRD_TYPE_GIANT:
+                        bird_sprite = SPRITE_GIANT_BIRD1;
+                        break;
                     case BIRD_TYPE_UMBRELLA_ABOVE:
-                    case BIRD_TYPE_UMBRELLA_UNDER: bird_sprite = SPRITE_UMBRELLA_BIRD1 + bird->alive.current_sprite; break;
-                    case BIRD_TYPE_BOMB: bird_sprite = SPRITE_BOMB_BIRD1 + bird->alive.current_sprite; break;
-                    case BIRD_TYPE_MONITOR: bird_sprite = SPRITE_BIRDMONITOR1 + bird->alive.current_sprite; break;
-                    case BIRD_TYPE_WHEELS: bird_sprite = SPRITE_WHEEL_BIRD1 + bird->alive.current_sprite; break;
-                    case BIRD_TYPE_SHARK: bird_sprite = SPRITE_SHARK1 + bird->alive.current_sprite; break;
+                    case BIRD_TYPE_UMBRELLA_UNDER:
+                        bird_sprite = SPRITE_UMBRELLA_BIRD1;
+                        break;
+                    case BIRD_TYPE_BOMB:
+                        bird_sprite = SPRITE_BOMB_BIRD1;
+                        break;
+                    case BIRD_TYPE_MONITOR:
+                        bird_sprite = SPRITE_BIRDMONITOR1;
+                        break;
+                    case BIRD_TYPE_WHEELS:
+                        bird_sprite = SPRITE_WHEEL_BIRD1;
+                        break;
+                    case BIRD_TYPE_SHARK:
+                        bird_sprite = SPRITE_SHARK1;
+                        break;
+                    case BIRD_TYPE_GIANT_WHEELS:
+                        bird_sprite = SPRITE_GIANT_WHEEL_BIRD1;
+                        break;
+                    case BIRD_TYPE_HAT:
+                        bird_sprite = SPRITE_GIANT_BIRD1;
+                        break;
+                    default: ASSERT(false);
                 }
+                bird_sprite += bird->alive.current_sprite;
+
                 if (bird->alive.damage_timer > 0.0f) {
                     BeginShaderMode(state->bird_damage_shader);
-                    if (bird->type == BIRD_TYPE_WHEELS) {
-                        render_wheel_bird_line(bird, (Color){255,255,255,255});
+                    float rotation = 0;
+                    switch (bird->type) {
+                        case BIRD_TYPE_WHEELS: {
+                            render_wheel_bird_line(bird, (Color){255,255,255,255});
+                        } break;
+                        case BIRD_TYPE_GIANT_WHEELS: {
+                            Boss *b = find_boss_by_bird(bird);
+                            ASSERT(b != NULL);
+                            switch (b->state) {
+                                case BOSS_STATE_LEFT: break;
+                                case BOSS_STATE_UP: rotation = 90.0f; break;
+                                case BOSS_STATE_RIGHT: rotation = 180.0f; break;
+                                case BOSS_STATE_DOWN: rotation = 270.0f; break;
+                            }
+                        } break;
                     }
-                    atlas_draw(state, bird_sprite, bird->position, 0.0f, scale, OPAQUE);
+                    atlas_draw(bird_sprite, bird->position, rotation, scale, OPAQUE);
                     EndShaderMode();
                 } else {
                     BeginShaderMode(state->bird_shader);
                     switch (bird->type) {
                         default: {
-                            atlas_draw(state, bird_sprite, bird->position, 0.0f, scale, OPAQUE);
+                            atlas_draw(bird_sprite, bird->position, 0.0f, scale, OPAQUE);
                         } break;
                         case BIRD_TYPE_TINY: {
                             Vector2 tiny_scale = {
                                 scale.x * 0.5f,
                                 scale.y * 0.5f
                             };
-                            atlas_draw(state, bird_sprite, bird->position, 0.0f, tiny_scale, OPAQUE);
+                            atlas_draw(bird_sprite, bird->position, 0.0f, tiny_scale, OPAQUE);
                             break;
                         } break;
                         case BIRD_TYPE_UMBRELLA_ABOVE: {
-                            atlas_draw(state, SPRITE_UMBRELLA, bird->position, 0.0f, scale, OPAQUE);
+                            atlas_draw(SPRITE_UMBRELLA, bird->position, 0.0f, scale, OPAQUE);
                             Vector2 offset_bird_position = {
                                 bird->position.x,
                                 bird->position.y - 0.03f
                             };
-                            atlas_draw(state, bird_sprite, offset_bird_position, 0.0f, scale, OPAQUE);
+                            atlas_draw(bird_sprite, offset_bird_position, 0.0f, scale, OPAQUE);
                         } break;
                         case BIRD_TYPE_UMBRELLA_UNDER: {
                             float upside_down_rotation = 180.0f;
-                            atlas_draw(state, SPRITE_UMBRELLA, bird->position, upside_down_rotation, scale, OPAQUE);
+                            atlas_draw(SPRITE_UMBRELLA, bird->position, upside_down_rotation, scale, OPAQUE);
                             Vector2 offset_bird_position = {
                                 bird->position.x,
                                 bird->position.y + 0.03f
                             };
-                            atlas_draw(state, bird_sprite, offset_bird_position, 0.0f, scale, OPAQUE);
+                            atlas_draw(bird_sprite, offset_bird_position, 0.0f, scale, OPAQUE);
                         } break;
                         case BIRD_TYPE_WHEELS: {
                             render_wheel_bird_line(bird, (Color){255,0,0,255});
-                            atlas_draw(state, bird_sprite, bird->position, 0.0f, scale, OPAQUE);
+                            atlas_draw(bird_sprite, bird->position, 0.0f, scale, OPAQUE);
+                        } break;
+                        case BIRD_TYPE_GIANT_WHEELS: {
+                            Boss *b = find_boss_by_bird(bird);
+                            ASSERT(b != NULL);
+                            float rotation;
+                            switch (b->state) {
+                                default: ASSERT(false);
+                                case BOSS_STATE_LEFT: rotation = 0.0f; break;
+                                case BOSS_STATE_UP: rotation = 90.0f; break;
+                                case BOSS_STATE_RIGHT: rotation = 180.0f; break;
+                                case BOSS_STATE_DOWN: rotation = 270.0f; break;
+                            }
+                            atlas_draw(bird_sprite, bird->position, rotation, scale, OPAQUE);
                         } break;
                     }
                     EndShaderMode();
@@ -1486,7 +1673,7 @@ void render_birds() {
                     for (int j = 0; j < BIRD_DEATH_PARTS; j++) {
                         Sprite sprite = sprites[j];
                         float rotation = bird->dead.rotations[j];
-                        atlas_draw(state, sprite, bird->dead.positions[j], rotation, scale, OPAQUE);
+                        atlas_draw(sprite, bird->dead.positions[j], rotation, scale, OPAQUE);
                     }
                 }
                 EndShaderMode();

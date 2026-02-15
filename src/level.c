@@ -1,6 +1,3 @@
-#define MIN_BIRD_FREQUENCY 0.1f
-#define MAX_BIRD_FREQUENCY 0.2f
-#define LEVELS_BEFORE_MIN_FREQUENCY 16
 #define LEVEL_IDX_TEXT_BG_COLOR ((Color) { 0, 0, 0, 255 })
 #define LEVEL_IDX_TEXT_COLOR ((Color) { 255, 255, 255, 255 })
 #define MULTIPLIER_TEXT_BG_COLOR ((Color) { 255, 0, 0, 255 })
@@ -28,7 +25,7 @@ Vector2 scroll_sprite_offset(Vector2 sprite_size) {
     };
 }
 
-int setup_sprite_scrollers_for_current_level(State *state) {
+int setup_sprite_scrollers_for_current_level() {
     SpriteScroller *sprite_scrollers = state->sprite_scrollers;
     int sprite_scroller_amount = 0;
     switch (state->area) {
@@ -353,29 +350,21 @@ int setup_sprite_scrollers_for_current_level(State *state) {
     return sprite_scroller_amount;
 }
 
-Level generate_level_data(State *state) {
+Level generate_level_data() {
     Level level = {0};
-
-    if (state->level_idx >= LEVELS_BEFORE_MIN_FREQUENCY) {
-        level.bird_frequency = MIN_BIRD_FREQUENCY;
-    } else {
-        float min_max_frequency_diff = MAX_BIRD_FREQUENCY - MIN_BIRD_FREQUENCY;
-        float bird_frequency_loss_per_level = min_max_frequency_diff / LEVELS_BEFORE_MIN_FREQUENCY;
-        float bird_frequency_loss = bird_frequency_loss_per_level * state->level_idx;
-        level.bird_frequency = MAX_BIRD_FREQUENCY - bird_frequency_loss;
-        level.required_fuel = 100 + (state->level_idx * 5);
-    }
-
+    level.required_fuel = 1000000 + (state->level_idx * 5);
     return level;
 }
 
-void level_set(int level_idx) {
-    state->level_idx = level_idx;
-    state->current_level = generate_level_data(state);
-    state->current_level.sprite_scroller_amount = setup_sprite_scrollers_for_current_level(state);
+void level_setup(int area, int level) {
+    state->area = area;
+    state->portal_fuel = 0;
+    state->level_idx = level;
+    state->current_level = generate_level_data();
+    state->current_level.sprite_scroller_amount = setup_sprite_scrollers_for_current_level();
 }
 
-void level_update(State *state) {
+void level_update() {
     SpriteScroller *sprite_scrollers = state->sprite_scrollers;
     Vector2 sprite_size = scroll_sprite_size();
     for (int i = 0; i < state->current_level.sprite_scroller_amount; i++) {
@@ -392,9 +381,11 @@ void level_update(State *state) {
             sprite_scrollers[i].scroll.y += sprite_size.y;
         }
     }
+
+    state->frame_data.flags |= FRAME_FLAG_LEVEL_HAS_BEEN_UPDATED;
 }
 
-void level_render(State *state) {
+void level_render() {
     SpriteScroller *sprite_scrollers = state->sprite_scrollers;
     Vector2 sprite_size = scroll_sprite_size();
     Vector2 sprite_offset = scroll_sprite_offset(sprite_size);
@@ -407,7 +398,7 @@ void level_render(State *state) {
                 };
                 Color color = {255,255,255,sprite_scrollers[i].opacity};
                 Vector2 scale = { 1.01f, 1.01f };
-                atlas_draw(state, sprite_scrollers[i].sprite, position, 0.0f, scale, color);
+                atlas_draw(sprite_scrollers[i].sprite, position, 0.0f, scale, color);
             }
         }
     }

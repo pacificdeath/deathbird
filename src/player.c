@@ -14,17 +14,25 @@ static inline bool player_has_infinite_lives() {
     return state->level_idx == INFINITE_LIVES_LEVEL;
 }
 
+static inline bool is_player_vertical_movement_enabled() {
+    return !has_flag(state->flags, FLAG_CONSOLE) && state->menu_state == MENU_STATE_INACTIVE;
+}
+
 static inline bool player_key_pressed(int key) {
-    if (has_flag(state->flags, FLAG_CONSOLE)) return false;
-    return IsKeyPressed(key);
+    if (is_player_vertical_movement_enabled()) {
+        return IsKeyPressed(key);
+    }
+    return false;
 }
 
 static inline bool player_key_down(int key) {
-    if (has_flag(state->flags, FLAG_CONSOLE)) return false;
-    return IsKeyDown(key);
+    if (is_player_vertical_movement_enabled()) {
+        return IsKeyDown(key);
+    }
+    return false;
 }
 
-static void handle_input(State *state) {
+static void handle_input() {
     Player *player = &state->player;
 
     if (player_key_pressed(KEY_LEFT)) {
@@ -71,7 +79,7 @@ static void handle_input(State *state) {
     }
 }
 
-static void handle_score(State *state) {
+static void handle_score() {
     Player *player = &state->player;
     if (!player_has_infinite_lives()) {
         player->lives--;
@@ -103,13 +111,13 @@ static void handle_score(State *state) {
 
 void player_init(Player *p) {
     p->state = PLAYER_STATE_GROUNDED;
-    p->vertical_speed = 1.0f;
+    p->vertical_speed = 1.3f;
     p->horizontal_speed = 1.6f;
     p->may_not_interact_with_this_bird_idx = -1;
     p->lives = DEFAULT_LIVES;
 }
 
-void player_level_setup(State *state) {
+void player_level_setup() {
     Player *player = &state->player;
 
     state->level_score = 0;
@@ -131,7 +139,7 @@ void player_add_life() {
     }
 }
 
-static void player_turn_around(State *state) {
+static void player_turn_around() {
     switch (state->player.state) {
     case PLAYER_STATE_UP: state->player.state = PLAYER_STATE_DOWN; break;
     case PLAYER_STATE_DOWN: state->player.state = PLAYER_STATE_UP; break;
@@ -140,7 +148,7 @@ static void player_turn_around(State *state) {
     state->player.last_turnaround_y = state->player.spinner_position.y;
 }
 
-void player_update(State *state) {
+void player_update() {
     Player *player = &state->player;
     Bird *birds = state->birds;
 
@@ -153,7 +161,7 @@ void player_update(State *state) {
         case PLAYER_STATE_INSIDE_PORTAL:
             break;
         case PLAYER_STATE_EXHALED_BY_PORTAL: {
-            Vector2 portal_position = portal_get_position(state);
+            Vector2 portal_position = portal_get_position();
             float portal_distance = vec2_distance(portal_position, player->spinner_position);
             float base_speed = 0.1f;
             player->spinner_position.y -= (base_speed + (portal_distance / PORTAL_RADIUS)) * state->delta_time;
@@ -163,7 +171,7 @@ void player_update(State *state) {
             }
         } break;
         case PLAYER_STATE_LOST_LIFE: {
-            handle_input(state);
+            handle_input();
             player->spinner_position.y = GAME_GROUND_Y;
             player->rotation += ROTATION_SPEED_GROUND * state->delta_time;
             player->reset_flicker_timer += state->delta_time;
@@ -182,7 +190,7 @@ void player_update(State *state) {
             }
         } break;
         case PLAYER_STATE_GROUNDED: {
-            handle_input(state);
+            handle_input();
             player->spinner_position.y = GAME_GROUND_Y;
             player->rotation += ROTATION_SPEED_GROUND * state->delta_time;
             if (up_arrow_hold && state->global_state == GLOBAL_STATE_GAME) {
@@ -190,7 +198,7 @@ void player_update(State *state) {
             }
         } break;
         case PLAYER_STATE_RETURN_TO_GROUND: {
-            handle_input(state);
+            handle_input();
             if (player->spinner_position.y > GAME_GROUND_Y) {
                 player->spinner_position.y -= (player->vertical_speed * state->delta_time);
             }
@@ -202,7 +210,7 @@ void player_update(State *state) {
         } break;
         case PLAYER_STATE_UP:
         case PLAYER_STATE_DOWN: {
-            handle_input(state);
+            handle_input();
             int dir = player->state == PLAYER_STATE_UP ? 1 : -1;
             player->spinner_position.y += dir * player->vertical_speed * state->delta_time;
             player->rotation += ROTATION_SPEED_AIR * state->delta_time;
@@ -216,7 +224,7 @@ void player_update(State *state) {
                 player->spinner_position.y = GAME_GROUND_Y;
                 player->last_turnaround_y = -1.0f;
                 player->may_not_interact_with_this_bird_idx = -1;
-                handle_score(state);
+                handle_score();
                 player->state = PLAYER_STATE_LOST_LIFE;
             }
 
@@ -287,32 +295,32 @@ void player_update(State *state) {
                     if (player->state == PLAYER_STATE_UP) {
                         if (up_arrow_hold) {
                             if (!has_flag(hit, BIRD_HIT_PASS_THROUGH_ALLOWED)) {
-                                player_turn_around(state);
+                                player_turn_around();
                             }
                         } else {
                             if (has_flag(hit, BIRD_HIT_BOUNCE_ALLOWED)) {
-                                player_turn_around(state);
+                                player_turn_around();
                             }
                         }
                     } else {
                         if (down_arrow_hold) {
                             if (!has_flag(hit, BIRD_HIT_PASS_THROUGH_ALLOWED)) {
-                                player_turn_around(state);
+                                player_turn_around();
                             }
                         } else {
                             if (has_flag(hit, BIRD_HIT_BOUNCE_ALLOWED)) {
-                                player_turn_around(state);
+                                player_turn_around();
                             }
                         }
                     }
                 } else {
-                    player_turn_around(state);
+                    player_turn_around();
                     player->may_not_interact_with_this_bird_idx = bird_hit_idx;
                 }
             }
         } break;
         case PLAYER_STATE_INHALED_BY_PORTAL: {
-            Vector2 portal_position = portal_get_position(state);
+            Vector2 portal_position = portal_get_position();
             Vector2 direction = vec2_direction(player->spinner_position, portal_position);
             direction = vec2_normalized(direction.x, direction.y);
             direction.x *= state->portal_power * state->delta_time;
@@ -339,9 +347,11 @@ void player_update(State *state) {
     if (state->bird_multiplier_timer > 0.0f) {
         state->bird_multiplier_timer -= state->delta_time;
     }
+
+    state->frame_data.flags |= FRAME_FLAG_PLAYER_HAS_BEEN_UPDATED;
 }
 
-void player_render(State *state) {
+void player_render() {
     Player *player = &state->player;
 
     int sprite;
@@ -357,20 +367,20 @@ void player_render(State *state) {
         case PLAYER_STATE_RETURN_TO_GROUND:
         case PLAYER_STATE_UP:
         case PLAYER_STATE_DOWN: {
-            atlas_draw(state, sprite, player->spinner_position, player->rotation, SCALE_NORMAL, OPAQUE);
+            atlas_draw(sprite, player->spinner_position, player->rotation, SCALE_NORMAL, OPAQUE);
         } break;
         case PLAYER_STATE_LOST_LIFE: {
             if (has_flag(player->flags, PLAYER_FLAG_HIDDEN)) {
                 break;
             }
-            atlas_draw(state, sprite, player->spinner_position, player->rotation, SCALE_NORMAL, OPAQUE);
+            atlas_draw(sprite, player->spinner_position, player->rotation, SCALE_NORMAL, OPAQUE);
         } break;
         case PLAYER_STATE_INHALED_BY_PORTAL:
         case PLAYER_STATE_EXHALED_BY_PORTAL: {
-            float ratio = portal_distance_to_center_ratio(state, player->spinner_position);
+            float ratio = portal_distance_to_center_ratio(player->spinner_position);
             float c = ratio * 255.0f;
             Color color = {c,c,c,255};
-            atlas_draw(state, SPRITE_PLAYER2, player->spinner_position, player->rotation, SCALE_UNIFORM(ratio), color);
+            atlas_draw(SPRITE_PLAYER2, player->spinner_position, player->rotation, SCALE_UNIFORM(ratio), color);
         } break;
         case PLAYER_STATE_NONE:
         case PLAYER_STATE_INSIDE_PORTAL:

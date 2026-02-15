@@ -1,6 +1,7 @@
 param (
     [switch]$Debug,
-    [switch]$AtlasGen
+    [switch]$AtlasGen,
+    [switch]$Gcc
 )
 
 function Log {
@@ -27,21 +28,21 @@ $ProgramName = "Deathbird"
 $OutputExe = "./build/deathbird.exe"
 $InputC = "./src/main.c"
 
-$GccArgs = @()
+$Args = @()
 if ($Debug) {
-    $GccArgs += @(
+    $Args += @(
         "-g",
         "-DDEBUG",
         "-Wall",
         "-O0"
     )
 } else {
-    $GccArgs += @(
+    $Args += @(
         "-O2"
     )
 }
 
-$GccArgs += @(
+$Args += @(
     "-o", $OutputExe,
     $InputC,
     "-std=c99",
@@ -55,8 +56,8 @@ $GccArgs += @(
 
 if ($AtlasGen) {
     Log "Compiling sprite atlas generator"
-    $AtlasGccArgs = $GccArgs + @("-DATLAS_GEN")
-    & gcc @AtlasGccArgs
+    $AtlasArgs = $Args + @("-DATLAS_GEN")
+    & gcc @AtlasArgs
     CatchErrors
     Log "Generating sprite atlas"
     & $OutputExe
@@ -64,7 +65,18 @@ if ($AtlasGen) {
 }
 
 Log "Compiling $ProgramName"
-& gcc @GccArgs
+
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+if ($Gcc) {
+    & gcc @Args
+} else {
+    & clang @Args
+}
+
+$stopwatch.Stop()
+Write-Host "Elapsed time: $($stopwatch.Elapsed.TotalSeconds) seconds"
+
 CatchErrors
 
 if ($Debug) {
