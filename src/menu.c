@@ -47,10 +47,10 @@ float ease_out_elastic(float x) {
 }
 
 void update_menu_rectangle() {
-    state->menu_rectangle.width = GetScreenWidth() * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
-    state->menu_rectangle.height = GetScreenHeight() * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
-    state->menu_rectangle.x = (GetScreenWidth() - state->menu_rectangle.width) / 2;
-    state->menu_rectangle.y = (GetScreenHeight() - state->menu_rectangle.height) / 2;
+    state->menu_rectangle.width = state->game_width * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
+    state->menu_rectangle.height = state->game_height * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
+    state->menu_rectangle.x = state->game_left + (state->game_width - state->menu_rectangle.width) / 2;
+    state->menu_rectangle.y = state->game_top + (state->game_height - state->menu_rectangle.height) / 2;
 }
 
 void initialize_menu() {

@@ -52,6 +52,7 @@ $Args += @(
     "-lopengl32",
     "-lgdi32",
     "-lwinmm"
+    "-DPLATFORM_WINDOWS"
 )
 
 if ($AtlasGen) {

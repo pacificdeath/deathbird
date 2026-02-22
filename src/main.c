@@ -1,6 +1,6 @@
-#define TEXTURE_PATH ".\\textures"
-#define ATLAS_PNG_PATH ".\\atlas\\atlas.png"
-#define ATLAS_DATA_GENERATED_H_PATH ".\\atlas\\atlas_data.generated.h"
+#define TEXTURE_PATH "./textures"
+#define ATLAS_PNG_PATH "./atlas/atlas.png"
+#define ATLAS_DATA_GENERATED_H_PATH "./atlas/atlas_data.generated.h"
 
 #ifdef DEBUG
 #define DEATHBIRD_LOG_LEVEL LOG_ALL
@@ -25,8 +25,7 @@ int main(void) {
 #include <stdint.h>
 #include <string.h>
 
-#include "../raylib/include/raylib.h"
-#include "../raylib/include/rlgl.h"
+#include "raylib.h"
 
 #include "../atlas/atlas_data.generated.h"
 
@@ -55,14 +54,7 @@ int main(void) {
 #include "ui.c"
 #include "menu.c"
 
-#ifdef DEBUG
 #include "console.c"
-#else
-static inline void console_init() {}
-static inline void console_update() {}
-static inline void console_update_dimensions() {}
-static inline void console_render() {}
-#endif
 
 #define TIME_CHANGE_SPEED 2.0f
 
@@ -351,7 +343,7 @@ int main(void) {
     state = (State *)calloc(1, sizeof(State));
     {
         SetTraceLogLevel(DEATHBIRD_LOG_LEVEL);
-        SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
         int window_min_width = AREA_TEXTURE_SIZE * GAME_WIDTH_RATIO * GAME_MIN_SIZE;
         int window_min_height = AREA_TEXTURE_SIZE * GAME_HEIGHT_RATIO * GAME_MIN_SIZE;
         InitWindow(window_min_width, window_min_height, "Deathbird");

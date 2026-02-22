@@ -20,9 +20,9 @@
 #define BIRD_Y_SECTIONS 7
 #define BIRD_HIGHEST_MULTIPLIER_CAPACITY 16
 #define BIRD_CIRCLE_CAPACITY 4
-#define BIRD_CIRCLE_ANGULAR_BASE_SPEED 10.0f
-#define BIRD_STATIONARY_CAPACITY 8
-#define BIRD_CIRCLE_MAX_BIRDS 16
+#define BIRD_CIRCLE_ANGULAR_BASE_SPEED 8.0f
+#define BIRD_STATIONARY_CAPACITY 6
+#define BIRD_CIRCLE_MAX_BIRDS 10
 #define BOSS_CAPACITY 2
 #define BOSS_MIN_X (-0.7f)
 #define BOSS_MAX_X 0.7f
@@ -30,6 +30,8 @@
 #define BOSS_MAX_Y 0.7f
 #define BOSS_SPEED 0.5f
 #define BIRD_FREQUENCY 0.3f
+
+#define BIRD_FLAG_NEXT_BIRD_IS_TV (1 << 0)
 
 #define TRAILING_FIREBALL_HISTORY_SIZE 256
 #define TRAILING_FIREBALLS_PER_DEATH_PART 7
@@ -175,7 +177,6 @@ const char *bird_state_names[] = {
     X(BOMB) \
     X(MONITOR) \
     X(STATIONARY) \
-    X(STATIONARY_WITH_WHEELS) \
     X(WHEELS) \
     X(SHARK) \
     X(GIANT_WHEELS) \
@@ -508,6 +509,7 @@ typedef struct State {
     Player player;
 
     Bird birds[BIRD_CAPACITY];
+    int bird_flags;
     BirdCircle bird_circles[BIRD_CIRCLE_CAPACITY];
     Bird *bird_monitor;
     BirdStationary bird_stationaries[BIRD_STATIONARY_CAPACITY];

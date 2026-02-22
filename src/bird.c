@@ -124,14 +124,6 @@ void get_bird_death_part_sprites(Sprite sprites[BIRD_DEATH_PARTS], int bird_type
             sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_HEAD;
             sprites[BIRD_DEATH_PARTS - 1] = SPRITE_BIRD_EYE;
             break;
-        case BIRD_TYPE_STATIONARY_WITH_WHEELS:
-            sprites[BIRD_DEATH_PARTS - 6] = SPRITE_WHEEL;
-            sprites[BIRD_DEATH_PARTS - 5] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 4] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 3] = SPRITE_BIRD_GORE1;
-            sprites[BIRD_DEATH_PARTS - 2] = SPRITE_BIRD_GORE2;
-            sprites[BIRD_DEATH_PARTS - 1] = SPRITE_WHEEL;
-            break;
         case BIRD_TYPE_UMBRELLA_ABOVE:
         case BIRD_TYPE_UMBRELLA_UNDER:
             sprites[BIRD_DEATH_PARTS - 6] = SPRITE_BIRD_GORE1;
@@ -544,29 +536,15 @@ void bird_stationary_add(int index, Vector2 position) {
     };
     stationary->state = BIRD_STATE_ALIVE;
     stationary->position.x = position.x;
+    stationary->type = BIRD_TYPE_STATIONARY;
     if (position.y < 0) {
-        stationary->type = BIRD_TYPE_STATIONARY_WITH_WHEELS;
         stationary->position.y = -1.1f;
     } else {
-        stationary->type = BIRD_TYPE_STATIONARY;
         stationary->position.y = 1.1f;
     }
     stationary->alive.health = 1;
     stationary->alive.collision_bounds.x = 0.1f;
     stationary->alive.collision_bounds.y = 0.1f;
-}
-
-void remove_bird_circle(BirdCircle *circle) {
-    for (int i = 0; i < circle->count; i++) {
-        bird_set_available(circle->birds[i]);
-    }
-    for (int i = 0; i < state->bird_circle_count; i++) {
-        if (&state->bird_circles[i] == circle) {
-            state->bird_circles[i] = state->bird_circles[state->bird_circle_count - 1];
-            state->bird_circle_count--;
-            break;
-        }
-    }
 }
 
 void initialize_birds() {
@@ -1008,9 +986,12 @@ void update_birds() {
                     ( state->bird_monitor->type == BIRD_TYPE_MONITOR || state->bird_monitor->type == BIRD_TYPE_BOMB )
                 );
 
-                if (!monitor_or_bomb_exists && GetRandomValue(0, 9) == 0) {
+                if (!monitor_or_bomb_exists && has_flag(state->bird_flags, BIRD_FLAG_NEXT_BIRD_IS_TV)) {
+                    state->bird_flags &= ~BIRD_FLAG_NEXT_BIRD_IS_TV;
+
                     // bomb bird is the less preferable version of the bird monitor
                     // it first appears as a random replacement for the bird monitor in the industrial place
+                    // TODO: above comment is outdated, what the crack is going on
                     if (GetRandomValue(0, state->level_idx / AREA_GREEN) == 0) {
                         state->bird_monitor = get_available_bird();
                         state->bird_monitor->state = BIRD_STATE_ALIVE;
@@ -1034,11 +1015,11 @@ void update_birds() {
                         state->bird_monitor->alive.collision_bounds.y = 0.15f;
                         state->current_level.bird_timer = BIRD_FREQUENCY;
                     }
-                } else if (state->bird_circle_count < BIRD_CIRCLE_CAPACITY && GetRandomValue(0, 9) == 0) {
+                } else if (state->portal_fuel > 100 && state->bird_circle_count < BIRD_CIRCLE_CAPACITY && GetRandomValue(0, 9) == 0) {
                     BirdCircle *circle = &state->bird_circles[state->bird_circle_count++];
                     *circle = (BirdCircle){0};
-                    circle->count = GetRandomValue(2, BIRD_CIRCLE_MAX_BIRDS);
-                    circle->radius = circle->count * 0.04f;
+                    circle->count = GetRandomValue(5, BIRD_CIRCLE_MAX_BIRDS);
+                    circle->radius = circle->count * 0.05f;
 
                     for (int i = 0; i < circle->count; i++) {
                         Bird *b = get_available_bird();
@@ -1063,6 +1044,9 @@ void update_birds() {
                     }
                     circle->move_speed = bird_move_speed_by_y_position(circle->position.y);
                     circle->angular_speed = BIRD_CIRCLE_ANGULAR_BASE_SPEED / circle->count;
+                    if (GetRandomValue(0,1) == 0) {
+                        circle->angular_speed *= -1;
+                    }
 
                     state->current_level.bird_timer = (BIRD_FREQUENCY * circle->count);
                 } else {
@@ -1086,8 +1070,7 @@ void update_birds() {
                             bird_set_available(bird);
                         }
                     } break;
-                    case BIRD_TYPE_STATIONARY:
-                    case BIRD_TYPE_STATIONARY_WITH_WHEELS: {
+                    case BIRD_TYPE_STATIONARY: {
                         BirdStationary stationary = bird_stationary_find(bird);
                         bird->position.y += (stationary.position.y - bird->position.y) * state->delta_time * 5.0f;
                     } break;
@@ -1367,7 +1350,16 @@ void update_birds() {
         }
 
         if (all_reserved) {
-            remove_bird_circle(circle);
+            for (int i = 0; i < circle->count; i++) {
+                bird_set_available(circle->birds[i]);
+            }
+            for (int i = 0; i < state->bird_circle_count; i++) {
+                if (&state->bird_circles[i] == circle) {
+                    state->bird_circles[i] = state->bird_circles[state->bird_circle_count - 1];
+                    state->bird_circle_count--;
+                    break;
+                }
+            }
             continue;
         }
 
@@ -1398,6 +1390,9 @@ BirdHit apply_damage_to_bird(Bird *bird, int damage, Vector2 from, float velocit
     if (bird->alive.health <= 0) {
         if (!level_target_reached()) {
             state->portal_fuel++;
+            if (state->portal_fuel % 100 == 0) {
+                state->bird_flags |= BIRD_FLAG_NEXT_BIRD_IS_TV;
+            }
         }
         state->bird_multiplier++;
 
@@ -1455,9 +1450,11 @@ BirdHit apply_damage_to_bird(Bird *bird, int damage, Vector2 from, float velocit
                     float offset = 0.875f;
                     bird_stationary_add(i, (Vector2) {
                         left + space + (space * (i % half)),
-                        (i < 4) ? offset : -offset,
+                        (i < half) ? offset : -offset,
                     });
                 }
+
+                state->current_level.bird_timer = 0.0f;
             } break;
         }
 
@@ -1554,9 +1551,6 @@ void render_birds() {
                     case BIRD_TYPE_RESERVED:
                     case BIRD_TYPE_STATIONARY:
                         bird_sprite = SPRITE_BIRD1;
-                        break;
-                    case BIRD_TYPE_STATIONARY_WITH_WHEELS:
-                        bird_sprite = SPRITE_WHEEL_BIRD1;
                         break;
                     case BIRD_TYPE_GIANT:
                         bird_sprite = SPRITE_GIANT_BIRD1;

@@ -28,8 +28,18 @@ void sanitize_name(const char *input, char *output, int max_len) {
     output[copy_len] = '\0';
 }
 
+int compare_paths(const void *a, const void *b)
+{
+    const char *pa = *(const char **)a;
+    const char *pb = *(const char **)b;
+
+    return strcmp(GetFileName(pa), GetFileName(pb));
+}
+
 int generate_atlas() {
     FilePathList files = LoadDirectoryFiles(TEXTURE_PATH);
+
+    qsort(files.paths, files.count, sizeof(char *), compare_paths);
 
     const int atlas_width = 2048;
     const int atlas_height = 2048;
@@ -82,7 +92,7 @@ int generate_atlas() {
         ImageDraw(&atlas, image, src, dst, (Color){0xff,0xff,0xff,0xff});
 
         int split_count;
-        const char **split = TextSplit(files.paths[i], '\\', &split_count);
+        const char **split = TextSplit(files.paths[i], '/', &split_count);
 
         char image_name[64];
         sanitize_name(split[split_count - 1], image_name, 64);
@@ -122,6 +132,8 @@ int generate_atlas() {
     sb_append_char(&atlas_sb, '\0');
 
     SaveFileText(ATLAS_DATA_GENERATED_H_PATH, atlas_sb.data);
+
+    UnloadDirectoryFiles(files);
 
     ExportImage(atlas, ATLAS_PNG_PATH);
 

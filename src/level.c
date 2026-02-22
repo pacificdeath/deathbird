@@ -352,7 +352,7 @@ int setup_sprite_scrollers_for_current_level() {
 
 Level generate_level_data() {
     Level level = {0};
-    level.required_fuel = 1000000 + (state->level_idx * 5);
+    level.required_fuel = 10000;
     return level;
 }
 
