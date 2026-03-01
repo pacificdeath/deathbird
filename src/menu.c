@@ -17,7 +17,6 @@ enum {
 
 enum {
     PAUSE_MENU_OPTION_RESUME,
-    PAUSE_MENU_OPTION_QUICK_RESTART,
     PAUSE_MENU_OPTION_BACK_TO_MAIN_MENU,
     PAUSE_MENU_OPTION_COUNT,
 };
@@ -34,7 +33,7 @@ bool is_menu_closing() { return state->menu_state == MENU_STATE_CLOSING; }
 bool is_menu_inactive() { return state->menu_state == MENU_STATE_INACTIVE; }
 
 float ease_out_back(float x) {
-    float c1 = 1.70158;
+    float c1 = 1.70158f;
     float c3 = c1 + 1;
     return 1 + c3 * powf(x - 1, 3) + c1 * powf(x - 1, 2);
 }
@@ -43,17 +42,17 @@ float ease_out_elastic(float x) {
     float c4 = (2 * PI) / 4;
     if (x <= 0) return 0;
     if (x >= 1) return 1;
-    return powf(2, -5 * x) * sinf((x * 10 - 0.75) * c4) + 1;
+    return powf(2, -5 * x) * sinf((x * 10.0f - 0.75f) * c4) + 1.0f;
 }
 
 void update_menu_rectangle() {
-    state->menu_rectangle.width = state->game_width * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
-    state->menu_rectangle.height = state->game_height * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
-    state->menu_rectangle.x = state->game_left + (state->game_width - state->menu_rectangle.width) / 2;
-    state->menu_rectangle.y = state->game_top + (state->game_height - state->menu_rectangle.height) / 2;
+    state->menu_rectangle.width = (float)state->game_width * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
+    state->menu_rectangle.height = (float)state->game_height * MENU_FULL_SIZE * ease_out_back(state->menu_big_animation);
+    state->menu_rectangle.x = (float)state->game_left + ((float)state->game_width - (float)state->menu_rectangle.width) / 2;
+    state->menu_rectangle.y = (float)state->game_top + ((float)state->game_height - state->menu_rectangle.height) / 2;
 }
 
-void initialize_menu() {
+void menu_prepare() {
     state->menu_cached_global_state = state->global_state;
     state->menu_state = MENU_STATE_OPENING;
     state->menu_selected_idx = 0;
@@ -94,7 +93,6 @@ const char *get_menu_option_name(int idx) {
         switch (idx) {
             default: ASSERT(false); return NULL;
             case PAUSE_MENU_OPTION_RESUME: return "Resume";
-            case PAUSE_MENU_OPTION_QUICK_RESTART: return "Quick restart";
             case PAUSE_MENU_OPTION_BACK_TO_MAIN_MENU: return "Back to main menu";
         }
     }
@@ -111,7 +109,7 @@ const char *get_menu_option_name(int idx) {
         case GLOBAL_STATE_GAME_OVER: {
             switch (idx) {
                 default: ASSERT(false); return NULL;
-                case GAME_OVER_MENU_OPTION_JUST_RESTART: return "Just restart";
+                case GAME_OVER_MENU_OPTION_JUST_RESTART: return "Go all the way back";
                 case GAME_OVER_MENU_OPTION_ENOUGH_WITH_THIS: return "Enough with this!";
             }
         }
@@ -145,13 +143,10 @@ bool update_menu() {
             state->menu_state = MENU_STATE_INACTIVE;
             state->flags &= ~FLAG_GAME_IS_PAUSED;
             state->global_state = GLOBAL_STATE_GAME;
-
-            update_menu_rectangle();
-            return true;
         }
 
         update_menu_rectangle();
-        return false;
+        return true;
     }
 
     update_menu_rectangle();
@@ -172,15 +167,11 @@ bool update_menu() {
                     case PAUSE_MENU_OPTION_RESUME:
                         toggle_game_pause();
                         break;
-                    case PAUSE_MENU_OPTION_QUICK_RESTART:
-                        state->flags &= ~FLAG_GAME_IS_PAUSED;
-                        travel_to_area(AREA_FOREST, 1);
-                        return true;
                     case PAUSE_MENU_OPTION_BACK_TO_MAIN_MENU:
-                        travel_to_area(AREA_FOREST, 1);
+                        state->next_area = AREA_FOREST;
                         state->global_state = GLOBAL_STATE_DEFAULT;
                         state->flags &= ~FLAG_GAME_IS_PAUSED;
-                        initialize_menu();
+                        menu_prepare();
                         break;
                 }
                 return false;
@@ -205,6 +196,8 @@ bool update_menu() {
                     switch (state->menu_selected_idx) {
                         default: ASSERT(false);
                         case GAME_OVER_MENU_OPTION_JUST_RESTART:
+                            state->menu_state = MENU_STATE_CLOSING;
+                            game();
                             return true;
                         case GAME_OVER_MENU_OPTION_ENOUGH_WITH_THIS:
                             state->flags |= FLAG_DEATHBIRD_BIG_QUIT;
@@ -239,11 +232,14 @@ bool update_menu() {
     return false;
 }
 
+// TODO: alot of this stuff should be in update not render
 void render_menu() {
     DrawRectangleRounded(state->menu_rectangle, 0.2f, 100, MENU_BG_COLOR);
     DrawRectangleRoundedLines(state->menu_rectangle, 0.2f, 100, MENU_OPTION_COLOR);
 
     float multiplier = ease_out_back(state->menu_big_animation);
+
+    set_bird_shader_palette_index(BIRD_PALETTE_WHITE);
 
     for (int option_idx = 0; option_idx < get_menu_option_count(); option_idx++) {
 
@@ -269,11 +265,11 @@ void render_menu() {
 
         Vector2 text_position;
         text_position.x = state->menu_rectangle.x + (state->menu_rectangle.width / 2);
-        text_position.y = state->menu_rectangle.y + (state->menu_rectangle.height / (get_menu_option_count() + 1)) * (option_idx + 1);
+        text_position.y = state->menu_rectangle.y + (state->menu_rectangle.height / ((float)get_menu_option_count() + 1)) * ((float)option_idx + 1.0f);
 
         Vector2 text_origin;
-        text_origin.x = text_dimensions.x / 2;
-        text_origin.y = text_dimensions.y / 2;
+        text_origin.x = text_dimensions.x / 2.0f;
+        text_origin.y = text_dimensions.y / 2.0f;
 
         DrawTextPro(state->font, option_name, text_position, text_origin, text_rotation, font_size, 0, text_color);
 
@@ -282,14 +278,18 @@ void render_menu() {
 
             int bird_sprite = SPRITE_BIRD1 + state->menu_selection_bird_sprite;
             float bird_offset_from_menu_border = state->menu_rectangle.width * 0.1f;
-            float bird_offscreen_offset = GetScreenWidth() - (GetScreenWidth() * multiplier);
+            float bird_offscreen_offset = (float)GetScreenWidth() - ((float)GetScreenWidth() * multiplier);
 
             Vector2 bird_pixel_position;
             float menu_right_border = state->menu_rectangle.x + state->menu_rectangle.width;
             bird_pixel_position.x = menu_right_border - bird_offset_from_menu_border + bird_offscreen_offset;
+            if (state->menu_selection_bird_position <= 0.0f) {
+                state->menu_selection_bird_position = (float)GetScreenWidth() / 2;
+            }
             float bird_y_direction = text_position.y - state->menu_selection_bird_position;
             state->menu_selection_bird_position += bird_y_direction * state->delta_time * 10.0f;
             bird_pixel_position.y = state->menu_selection_bird_position;
+
             Vector2 bird_position = to_game_position(bird_pixel_position);
             Vector2 bird_scale = is_menu_closing() ? SCALE_X_FLIP : SCALE_NORMAL;
             atlas_draw(bird_sprite, bird_position, 0.0f, bird_scale, OPAQUE);

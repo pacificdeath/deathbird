@@ -1,4 +1,4 @@
-static inline Color get_bg_color(Color fg_color) {
+Color get_bg_color(Color fg_color) {
     return (Color) {
         fg_color.r,
         fg_color.g,
@@ -10,7 +10,7 @@ static inline Color get_bg_color(Color fg_color) {
 void command_buffer_init() {
     CommandBuffer *cb = &state->console.command_buffer;
     cb->capacity = 8;
-    cb->commands = (Command *)malloc(sizeof(Command) * cb->capacity);
+    cb->commands = (Command *)malloc(sizeof(Command) * (unsigned long)cb->capacity);
 }
 
 void command_buffer_add(Command command) {
@@ -19,7 +19,7 @@ void command_buffer_add(Command command) {
     ASSERT(cb->count < cb->capacity);
     if (cb->count == cb->capacity - 1) {
         cb->capacity *= 2;
-        cb->commands = realloc(cb->commands, sizeof(Command) * cb->capacity);
+        cb->commands = realloc(cb->commands, sizeof(Command) * (unsigned long)cb->capacity);
     }
     cb->commands[cb->count] = command;
     cb->count++;
@@ -37,7 +37,7 @@ void result_buffer_reset() {
     ResultBuffer *rb = &state->console.result_buffer;
     result_buffer_free();
     rb->capacity = 8;
-    rb->results = (CommandResult *)malloc(sizeof(CommandResult) * rb->capacity);
+    rb->results = (CommandResult *)malloc(sizeof(CommandResult) * (unsigned long)rb->capacity);
 }
 
 void result_buffer_add(const char *text, Color color) {
@@ -46,7 +46,7 @@ void result_buffer_add(const char *text, Color color) {
     ASSERT(rb->count < rb->capacity);
     if (rb->count == rb->capacity - 1) {
         rb->capacity *= 2;
-        rb->results = realloc(rb->results, sizeof(CommandResult) * rb->capacity);
+        rb->results = realloc(rb->results, sizeof(CommandResult) * (unsigned long)rb->capacity);
     }
     CommandResult *result = &rb->results[rb->count];
     TextCopy(result->text, text);
@@ -54,15 +54,15 @@ void result_buffer_add(const char *text, Color color) {
     rb->count++;
 }
 
-static inline bool is_key_pressed_or_repeat(int key) {
+bool is_key_pressed_or_repeat(int key) {
     return IsKeyPressed(key) || IsKeyPressedRepeat(key);
 }
 
-static inline bool is_whitespace(char c) {
+bool is_whitespace(char c) {
     return c == ' ' || c == '\0';
 }
 
-static inline int find_next_non_whitespace(char *string, int idx) {
+int find_next_non_whitespace(char *string, int idx) {
     while (is_whitespace(string[idx])) {
         idx++;
     }
@@ -74,20 +74,22 @@ static inline int find_next_non_whitespace(char *string, int idx) {
 
 void console_update_dimensions(void) {
     Console *console = &state->console;
+    float padding_x = (float)state->game_width * 0.1f;
+    float padding_y = (float)state->game_height * 0.1f;
     console->rectangle = (Rectangle) {
-        state->game_left,
-        state->game_top,
-        state->game_width,
-        state->game_height / 2,
+        (float)state->game_left + padding_x,
+        (float)state->game_top + padding_y,
+        (float)state->game_width - (2.0f * padding_x),
+        (float)state->game_height - (2.0f * padding_y),
     };
 }
 
-static inline char to_lower(char c) {
+char to_lower(char c) {
     if (c >= 'A' && c <= 'Z') return c + ('a' - 'A');
     return c;
 }
 
-static int fuzzy_score(const char *pattern, const char *text) {
+int fuzzy_score(const char *pattern, const char *text) {
     int score = 0;
     int consecutive = 0;
     int p_idx = 0;
@@ -170,29 +172,18 @@ void console_reset(void) {
     default_command_order();
 }
 
-void command_just_play_the_game(void) { travel_to_area(AREA_FOREST, 1); state->global_state = GLOBAL_STATE_GAME; state->flags &= ~FLAG_CONSOLE; }
-void command_area_load_next(void) { travel_to_next_area(); }
-void command_area_load_forest(void) { travel_to_area(AREA_FOREST, 1); }
-void command_area_load_meadows(void) { travel_to_area(AREA_MEADOWS, 2); }
-void command_area_load_mountains(void) { travel_to_area(AREA_MOUNTAINS, 3); }
-void command_area_load_industrial(void) { travel_to_area(AREA_GREEN, 4); }
-void command_area_load_void(void) { travel_to_area(AREA_VOID, 5); }
-void command_area_load_red(void) { travel_to_area(AREA_INDUSTRIAL, 6); }
-void command_area_load_black(void) { travel_to_area(AREA_CASTLE, 7); }
-void command_area_load_void2(void) { travel_to_area(AREA_SKY, 8); }
-void command_area_play_forest(void) { command_just_play_the_game(); }
-void command_area_play_meadows(void) { travel_to_area(AREA_MEADOWS, 2); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_mountains(void) { travel_to_area(AREA_MOUNTAINS, 3); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_industrial(void) { travel_to_area(AREA_GREEN, 4); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_void(void) { travel_to_area(AREA_VOID, 5); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_red(void) { travel_to_area(AREA_INDUSTRIAL, 6); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_black(void) { travel_to_area(AREA_CASTLE, 7); state->global_state = GLOBAL_STATE_GAME; }
-void command_area_play_void2(void) { travel_to_area(AREA_SKY, 8); state->global_state = GLOBAL_STATE_GAME; }
+void command_area_load_forest(void) { state->next_area = AREA_FOREST; }
+void command_area_load_meadows(void) { state->next_area = AREA_MEADOWS; }
+void command_area_load_mountains(void) { state->next_area = AREA_MOUNTAINS; }
+void command_area_load_industrial(void) { state->next_area = AREA_GREEN; }
+void command_area_load_void(void) { state->next_area = AREA_VOID; }
+void command_area_load_red(void) { state->next_area = AREA_INDUSTRIAL; }
+void command_area_load_black(void) { state->next_area = AREA_CASTLE; }
+void command_area_load_void2(void) { state->next_area = AREA_SKY; }
 void command_enable_collision_bounds(void) { state->flags |= FLAG_SHOW_COLLISION_BOUNDS; }
 void command_disable_collision_bounds(void) { state->flags &= ~FLAG_SHOW_COLLISION_BOUNDS; }
 void command_show_out_of_bounds(void) { state->flags |= FLAG_SHOW_OUT_OF_BOUNDS; }
 void command_hide_out_of_bounds(void) { state->flags &= ~FLAG_SHOW_OUT_OF_BOUNDS; }
-void command_level_win(void) { state->portal_fuel = state->current_level.required_fuel; }
 void command_game_over(void) { state->global_state = GLOBAL_STATE_GAME_OVER; }
 void command_time_normal(void) { state->time_scale = 1.0f; }
 void command_time_slow(void) { state->time_scale = 0.5f; }
@@ -200,25 +191,32 @@ void command_time_super_slow(void) { state->time_scale = 0.1f; }
 void command_time_pause(void) { state->time_scale = 0.0f; }
 void command_time_fast(void) { state->time_scale = 2.0f; }
 void command_time_super_fast(void) { state->time_scale = 10.0f; }
-void command_enable_weak_bird_sharks(void) {
-    state->flags |= FLAG_BIRD_SHARK_HEALTH_1;
-    if (bird_boss_exists() && !bird_boss_defeated()) {
-        for (int i = 0; i < BOSS_CAPACITY; i++) {
-            state->bosses[i].bird->alive.health = 1;
-        }
-    }
-}
-void command_disable_weak_bird_sharks(void) { state->flags &= ~FLAG_BIRD_SHARK_HEALTH_1; }
 
 void command_show_global_state(void) {
     result_buffer_reset();
-    result_buffer_add(TextFormat("STATE:    %s", global_state_names[state->global_state]), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("PLAYER:   %s", player_state_names[state->player.state]), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("AREA:     %s", area_names[state->area]), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("LEVEL:    %i", state->level_idx), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("FADER:    %.2f [0.0 -> 255.0]", state->fader_level), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("CARTOON   %.2f [0.0 ->   2.0]", state->cartoon_transition_size), CONSOLE_WHITE);
-    result_buffer_add(TextFormat("PORTAL:   %.2f [1.0 ->   0.0]", state->portal_linear_disappearance), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("State: %s", global_state_names[state->global_state]), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("Player: %s", player_state_names[state->player.state]), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("World: %s", area_names[state->area]), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("Fader: %.2f [0.0 -> 255.0]", state->fader_level), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("Cartoon: %.2f [0.0 ->   2.0]", state->cartoon_transition_size), CONSOLE_WHITE);
+    result_buffer_add(TextFormat("Birdfreq: %.2f", state->bird_timer), CONSOLE_WHITE);
+    for (int i = 0; i < SPAWN_TYPE_TOTAL; i++) {
+        float percentage = (float)(state->bird_spawn_weights[i] / state->bird_total_spawn_weight) * 100;
+        Color color;
+        if (percentage >= 25.0f) {
+            color = CONSOLE_GREEN;
+        } else if (percentage >= 10) {
+            color = CONSOLE_YELLOW;
+        } else {
+            color = CONSOLE_RED;
+        }
+        result_buffer_add(TextFormat("Spawn chance (%s): %.2f%%", spawn_type_names[i], percentage), color);
+    }
+}
+
+void command_show_global_state_live(void) {
+    state->console.live_function = command_show_global_state;
+    command_show_global_state();
 }
 
 void command_list_birds() {
@@ -247,17 +245,14 @@ void command_list_birds_live() {
 void command_show_palette(int area) {
     ASSERT(area < AREA_TOTAL);
     result_buffer_reset();
-    for (int i = 0; i < BIRD_PALETTE_IDX_TOTAL; i++) {
+    Image image = LoadImageFromTexture(state->bird_palette_texture);
+    Color *pixels = (Color *)image.data;
+    for (int i = 0; i < BIRD_PALETTE_COLORS; i++) {
+        Color c = pixels[(area * BIRD_PALETTE_COLORS) + i];
         const char *name = bird_palette_idx_names[i];
-        Vector3 v = state->bird_palette[area][i];
-        Color c = {
-            .r = v.x * 255.0f,
-            .g = v.y * 255.0f,
-            .b = v.z * 255.0f,
-            .a = 255,
-        };
         result_buffer_add(TextFormat( "%-3i #%02x%02x%02x %s", i, c.r, c.g, c.b, name), c);
     }
+    UnloadImage(image);
 }
 void command_palette_show_forest(void) { command_show_palette(BIRD_PALETTE_WHITE); }
 void command_palette_show_meadows(void) { command_show_palette(BIRD_PALETTE_YELLOW); }
@@ -286,7 +281,36 @@ void command_show_textures_live() {
     command_show_textures();
 }
 
-static inline void console_register_command(int type, char *name, ConsoleFunction function) {
+void command_show_palette_texture() {
+    Console *console = &state->console;
+    if (is_key_pressed_or_repeat(KEY_RIGHT)) {
+        console->cursor_x = (console->cursor_x + 1) % BIRD_PALETTE_IDX_TOTAL;
+    } else if (is_key_pressed_or_repeat(KEY_LEFT)) {
+        console->cursor_x = ((console->cursor_x + BIRD_PALETTE_IDX_TOTAL) - 1) % BIRD_PALETTE_IDX_TOTAL;
+    } else if (is_key_pressed_or_repeat(KEY_UP)) {
+        console->cursor_y = (console->cursor_y + 1) % BIRD_PALETTE_TOTAL;
+    } else if (is_key_pressed_or_repeat(KEY_DOWN)) {
+        console->cursor_y = ((console->cursor_y + BIRD_PALETTE_TOTAL) - 1) % BIRD_PALETTE_TOTAL;
+    }
+}
+
+void command_show_palette_texture_live() {
+    state->console.texture = state->bird_palette_texture;
+    state->console.live_function = command_show_palette_texture;
+    command_show_palette_texture();
+}
+
+void command_show_atlas_texture() {
+    // TODO
+}
+
+void command_show_atlas_texture_live() {
+    state->console.texture = state->atlas;
+    state->console.live_function = command_show_atlas_texture;
+    command_show_atlas_texture();
+}
+
+void console_register_command(int type, char *name, ConsoleFunction function) {
     command_buffer_add((Command){type,name,function});
 }
 
@@ -296,12 +320,10 @@ void console_init(void) {
     console_update_dimensions();
     command_buffer_init();
 
-    console_register_command(BIRDCORE, "Just Play The Game", command_just_play_the_game);
     console_register_command(BIRDCORE, "Enable Collision Bounds", command_enable_collision_bounds);
     console_register_command(BIRDCORE, "Disable Collision Bounds", command_disable_collision_bounds);
     console_register_command(BIRDCORE, "Show Out Of Bounds", command_show_out_of_bounds);
     console_register_command(BIRDCORE, "Hide Out Of Bounds", command_hide_out_of_bounds);
-    console_register_command(BIRDCORE, "Area Load Next", command_area_load_next);
     console_register_command(BIRDCORE, "Area Load Forest", command_area_load_forest);
     console_register_command(BIRDCORE, "Area Load Meadows", command_area_load_meadows);
     console_register_command(BIRDCORE, "Area Load Mountains", command_area_load_mountains);
@@ -310,15 +332,6 @@ void console_init(void) {
     console_register_command(BIRDCORE, "Area Load Red", command_area_load_red);
     console_register_command(BIRDCORE, "Area Load Black", command_area_load_black);
     console_register_command(BIRDCORE, "Load Area Void2", command_area_load_void2);
-    console_register_command(BIRDCORE, "Area Play Forest, Level 1", command_area_play_forest);
-    console_register_command(BIRDCORE, "Area Play Meadows, Level 2", command_area_play_meadows);
-    console_register_command(BIRDCORE, "Area Play Mountains, Level 3", command_area_play_mountains);
-    console_register_command(BIRDCORE, "Area Play Industrial, Level 4", command_area_play_industrial);
-    console_register_command(BIRDCORE, "Area Play Void, Level 5", command_area_play_void);
-    console_register_command(BIRDCORE, "Area Play Red, Level 6", command_area_play_red);
-    console_register_command(BIRDCORE, "Area Play Black, Level 7", command_area_play_black);
-    console_register_command(BIRDCORE, "Area Play Sky, Level 8", command_area_play_void2);
-    console_register_command(BIRDCORE, "Level Win", command_level_win);
     console_register_command(BIRDCORE, "Game Over", command_game_over);
     console_register_command(BIRDCORE, "Time Normal", command_time_normal);
     console_register_command(BIRDCORE, "Time Slow", command_time_slow);
@@ -326,9 +339,8 @@ void console_init(void) {
     console_register_command(BIRDCORE, "Time Pause", command_time_pause);
     console_register_command(BIRDCORE, "Time Fast", command_time_fast);
     console_register_command(BIRDCORE, "Time Super Fast", command_time_super_fast);
-    console_register_command(BIRDCOMPUTER, "Show Global State", command_show_global_state);
-    console_register_command(BIRDCOMPUTER, "List Birds", command_list_birds);
-    console_register_command(BIRDCOMPUTER, "List Birds Live", command_list_birds_live);
+    console_register_command(BIRDCOMPUTER, "Show Global State", command_show_global_state_live);
+    console_register_command(BIRDCOMPUTER, "List Birds", command_list_birds_live);
     console_register_command(BIRDCOMPUTER, "Palette Show Forest", command_palette_show_forest);
     console_register_command(BIRDCOMPUTER, "Palette Show Meadows", command_palette_show_meadows);
     console_register_command(BIRDCOMPUTER, "Palette Show Mountains", command_palette_show_mountains);
@@ -338,10 +350,10 @@ void console_init(void) {
     console_register_command(BIRDCOMPUTER, "Palette Show Black", command_palette_show_black);
     console_register_command(BIRDCOMPUTER, "Palette Show Void2", command_palette_show_void2);
     console_register_command(BIRDATLAS, "Show Textures", command_show_textures_live);
-    console_register_command(BIRDCORE, "Enable Weak Bird-Sharks", command_enable_weak_bird_sharks);
-    console_register_command(BIRDCORE, "Disable Weak Bird-Sharks", command_disable_weak_bird_sharks);
+    console_register_command(BIRDTEXTURE, "Show Atlas Texture", command_show_atlas_texture_live);
+    console_register_command(BIRDTEXTURE, "Show Palette Texture", command_show_palette_texture_live);
 
-    console->ranked_commands = (RankedCommand *)malloc(sizeof(RankedCommand) * console->command_buffer.capacity);
+    console->ranked_commands = (RankedCommand *)malloc(sizeof(RankedCommand) * (unsigned long)console->command_buffer.capacity);
 
     console_reset();
 }
@@ -352,7 +364,7 @@ void console_cleanup() {
     result_buffer_free();
 }
 
-static inline void console_add_char(char c) {
+void console_add_char(char c) {
     Console *console = &state->console;
 
     if (console->cursor_x >= (CONSOLE_LINE_MAX_LENGTH - 1)) {
@@ -380,13 +392,13 @@ void console_input() {
     Console *console = &state->console;
     for (int key = KEY_A; key <= KEY_Z; key++) {
         if (IsKeyPressed(key)) {
-            char c = key + 32;
+            char c = (char)key + (char)32;
             console_add_char(c);
         }
     }
     for (int key = KEY_ZERO; key <= KEY_NINE; key++) {
         if (IsKeyPressed(key)) {
-            console_add_char(key);
+            console_add_char((char)key);
         }
     }
     if (IsKeyPressed(KEY_SPACE)) {
@@ -439,9 +451,14 @@ void console_update(void) {
                     case BIRDATLAS:
                         console->mode = BIRDATLAS;
                         break;
+                    case BIRDTEXTURE:
+                        console->mode = BIRDTEXTURE;
+                        break;
             } break;
             case BIRDCOMPUTER:
-            case BIRDATLAS: {
+            case BIRDATLAS:
+            case BIRDTEXTURE: {
+                console->cursor_x = 0;
                 console->cursor_y = 0;
                 console->view_offset = 0;
                 console->mode = BIRDCORE;
@@ -471,6 +488,7 @@ void console_update(void) {
             }
             break;
         case BIRDATLAS:
+        case BIRDTEXTURE:
             break;
     }
 
@@ -484,7 +502,7 @@ void console_render_line(const char *text, int line_idx, float line_size, float 
 
     Rectangle rec = {
         console->rectangle.x,
-        console->rectangle.y + console->rectangle.height - (line_idx * line_size) - line_size,
+        console->rectangle.y + console->rectangle.height - ((float)line_idx * line_size) - line_size,
         console->rectangle.width,
         line_size,
     };
@@ -503,7 +521,7 @@ void console_render_line(const char *text, int line_idx, float line_size, float 
     }
 
     for (int i = 0; text[i] != '\0' && i < CONSOLE_LINE_MAX_LENGTH; i++) {
-        rec.x = console->rectangle.x + (i * char_size);
+        rec.x = console->rectangle.x + ((float)i * char_size);
         DrawTextCodepoint(
             state->font,
             text[i],
@@ -517,7 +535,7 @@ void console_render_line(const char *text, int line_idx, float line_size, float 
 void console_render_cursor(float char_size, float line_size) {
     Console *console = &state->console;
     Vector2 cursor_bottom = {
-        console->rectangle.x + char_size * console->cursor_x,
+        console->rectangle.x + char_size * (float)console->cursor_x,
         console->rectangle.y + console->rectangle.height - (line_size * CONSOLE_INPUT_LINE_INDEX),
     };
     Vector2 cursor_top = {
@@ -553,12 +571,13 @@ void console_render(void) {
             for (int i = console->view_offset; i < console->ranked_command_count && i < console->view_offset + CONSOLE_MAX_LINES; i++) {
                 int line_idx = i - console->view_offset;
                 bool is_selected = i == console->cursor_y;
-                Color fg;
+                Color fg = CONSOLE_WHITE;
                 switch (console->ranked_commands[i].command->type) {
                     default: ASSERT(false); break;
                     case BIRDCORE: fg = CONSOLE_GREEN; break;
                     case BIRDCOMPUTER: fg = CONSOLE_PURPLE; break;
-                    case BIRDATLAS: fg = CONSOLE_BLUE; break;
+                    case BIRDATLAS:
+                    case BIRDTEXTURE: fg = CONSOLE_BLUE; break;
                 }
                 Color bg = is_selected ? get_bg_color(fg) : (Color){0};
                 console_render_line(
@@ -602,13 +621,31 @@ void console_render(void) {
             );
 
             if (bird_shader) {
-                prepare_bird_shader(console->atlas_palette_idx);
+                set_bird_shader_palette_index(bird_palette_by_area(console->atlas_palette_idx));
                 BeginShaderMode(state->bird_shader);
             }
             atlas_draw(console->atlas_sprite_idx, (Vector2){0}, 0.0f, SCALE_NORMAL, WHITE);
             if (bird_shader) {
                 EndShaderMode();
             }
+        } break;
+        case BIRDTEXTURE: {
+            Vector2 position = { console->rectangle.x, console->rectangle.y };
+            float scale = console->rectangle.width / (float)console->texture.width;
+            DrawTextureEx(console->texture, position, 0, scale, OPAQUE);
+            console_render_line(
+                TextFormat(
+                    "Palette: %s Index: \"%s\"",
+                    bird_palette_names[console->cursor_y],
+                    bird_palette_idx_names[console->cursor_x]
+                ),
+                0,
+                line_size,
+                char_size,
+                (Color){0},
+                CONSOLE_WHITE,
+                false
+            );
         } break;
     }
 }

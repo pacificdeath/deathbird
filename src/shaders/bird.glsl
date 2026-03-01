@@ -1,29 +1,25 @@
 #version 330
 
-const int PALETTE_SIZE = 32;
-
 in vec2 fragTexCoord;
 in vec4 fragColor;
 
 uniform sampler2D texture0;
-uniform vec3 palette[PALETTE_SIZE];
+uniform sampler2D paletteTex;
+uniform int paletteIndex;
 
 out vec4 finalColor;
 
 void main() {
-    // Sample source pixel
     vec4 texColor = texture(texture0, fragTexCoord);
 
-    // Convert red channel back to integer index (0–255)
     int index = int(texColor.r * 255.0 + 0.5);
 
-    // Clamp index to palette size
-    index = clamp(index, 0, PALETTE_SIZE - 1);
+    vec2 paletteDimensions = textureSize(paletteTex, 0);
 
-    // Lookup palette
-    vec3 mappedColor = palette[index];
+    float u = (float(index) + 0.5) / float(paletteDimensions.x);
+    float v = (float(paletteIndex) + 0.5) / float(paletteDimensions.y);
+    vec3 mappedColor = texture(paletteTex, vec2(u, v)).rgb;
 
-    // Apply original alpha (important for sprites)
     finalColor = vec4(mappedColor, texColor.a);
 }
 

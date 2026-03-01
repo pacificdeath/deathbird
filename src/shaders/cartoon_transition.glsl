@@ -9,7 +9,8 @@ uniform vec2 resolution;
 uniform float size;
 
 void main() {
-    vec2 uv = (fragTexCoord * 2) - 1;
+    vec2 uv = fragTexCoord - 0.5;
+
     uv.x *= resolution.x / resolution.y;
     if (length(uv) < size) {
         finalColor = vec4(1.0,0.0,0.0,0.0);

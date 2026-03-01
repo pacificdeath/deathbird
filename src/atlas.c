@@ -1,16 +1,11 @@
-static void atlas_source_rectangle(Rectangle *rec, Sprite sprite) {
-    ASSERT(sprite < SPRITE_COUNT);
-    *rec = sprite_rectangles[sprite];
-}
-
-static void atlas_destination_rectangle(Rectangle *rec, Vector2 position, Vector2 scale) {
-    rec->x = state->game_center_x + (position.x * (state->game_width / 2.0f));
-    rec->y = state->game_center_y - (position.y * (state->game_height / 2.0f));
+void atlas_destination_rectangle(Rectangle *rec, Vector2 position, Vector2 scale) {
+    rec->x = (float)state->game_center_x + (position.x * ((float)state->game_width / 2.0f));
+    rec->y = (float)state->game_center_y - (position.y * ((float)state->game_height / 2.0f));
     rec->width = scale.x;
     rec->height = scale.y;
 }
 
-static Vector2 sprite_render_scale(Sprite sprite, Vector2 scale) {
+Vector2 sprite_render_scale(int sprite, Vector2 scale) {
     ASSERT(sprite < SPRITE_COUNT);
     return (Vector2) {
         sprite_rectangles[sprite].width * state->scale_multiplier * scale.x,
@@ -20,15 +15,17 @@ static Vector2 sprite_render_scale(Sprite sprite, Vector2 scale) {
 
 void atlas_init() {
     state->atlas = LoadTexture(ATLAS_PNG_PATH);
+    SetTextureWrap(state->atlas, TEXTURE_WRAP_CLAMP);
 }
 
 void atlas_cleanup() {
     UnloadTexture(state->atlas);
 }
 
-void atlas_draw(Sprite sprite, Vector2 position, float rotation, Vector2 scale, Color color) {
-    Rectangle source;
-    atlas_source_rectangle(&source, sprite);
+void atlas_draw(int sprite, Vector2 position, float rotation, Vector2 scale, Color color) {
+    ASSERT(sprite < SPRITE_COUNT);
+
+    Rectangle source = sprite_rectangles[sprite];
 
     if (scale.x < 0) {
         source.width = -source.width;
